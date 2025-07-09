@@ -7,6 +7,7 @@ class Carer(BaseModel):
     name: str
     password: str
     phone: float
+    assigned_patients: List[Optional[str]] = []
 
 
 class Patient(BaseModel):
@@ -23,6 +24,7 @@ class Family(BaseModel):
     name: str
     password: str
     phone: float
+    assigned_patients: List[Optional[str]] = None
 
 
 class Manager(BaseModel):

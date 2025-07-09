@@ -21,7 +21,8 @@ async def create_carer(carer: Carer):
         "email": carer.email,
         "name": carer.name,
         "password": carer.password,
-        "phone": carer.phone
+        "phone": carer.phone,
+        "Assigned Patients": carer.assigned_patients
     }
 
     return {"message": "Carer created", "data": carers[carer.email]}
@@ -51,7 +52,9 @@ async def create_family(family: Family):
         "id": family.id,
         "name": family.name,
         "phone-number": family.phone,
-        "password": family.password
+        "password": family.password,
+        "Assigned Patients": family.assigned_patients
+
     }
     return {"message": "Family Member Created", "data:": familys[family.email]}
 
