@@ -1,11 +1,13 @@
-from routes.managers import familys,patients
+from app.database import carers, managers, familys,patients
 from app.models import UpdateFamily
 from fastapi import APIRouter
+from app.auth import hash_password,verify_password
+
 
 family_router = APIRouter()
 
 # Get Family member by email
-@family_router.get("/get-family/{email}")
+@family_router.get("/family/{email}")
 async def get_family(email: str):
     if email not in familys:
         return {"error": "Family member not found"}
@@ -26,7 +28,7 @@ async def get_family(email: str):
 
 
 
-@family_router.put("/update/family/{email}")
+@family_router.put("/family/{email}")
 async def update_family(email: str, new_data: UpdateFamily):
     if email not in familys:  # Check if family member exists
         return {"error": "Family member not found"}

@@ -1,13 +1,12 @@
+from app.auth import hash_password,verify_password
 from fastapi import FastAPI, APIRouter
 from app.models import Carer, Patient, Family, Manager, UpdateCarer, UpdatePatient, UpdateFamily, UpdateManager
-from typing import List, Dict
+from app.database import carers, managers, familys, patients
 
 manager_router = APIRouter()
 
-carers = {}
-familys = {}
-patients = {}
-managers = {}
+
+
 
 
 # Creating Models
@@ -17,10 +16,12 @@ async def create_carer(carer: Carer):
     if carer.email in carers:
         return {"Error": "Carer with this email is already signed up"}
 
+    hashed_pw = hash_password(carer.password)
+
     carers[carer.email] = {
         "email": carer.email,
         "name": carer.name,
-        "password": carer.password,
+        "password": hashed_pw,
         "phone": carer.phone,
         "Assigned Patients": carer.assigned_patients
     }
@@ -37,7 +38,8 @@ async def create_patient(patient: Patient):
         "name": patient.name,
         "age": patient.age,
         "room": patient.room,
-        "Date of Birth:": patient.date_of_birth
+        "Date of Birth:": patient.date_of_birth,
+        "Medical History": patient.medical_history
     }
 
     return {"message": "Patient Created", "data": patients[patient.id]}
@@ -47,12 +49,15 @@ async def create_patient(patient: Patient):
 async def create_family(family: Family):
     if family.email in familys:
         return {"Error": "This email is already in use"}
+
+
+    hashed_pw = hash_password(family.password)
     familys[family.email] = {
         "email": family.email,
         "id": family.id,
         "name": family.name,
         "phone-number": family.phone,
-        "password": family.password,
+        "password": hashed_pw,
         "Assigned Patients": family.assigned_patients
 
     }
@@ -64,11 +69,12 @@ async def create_manager(manager: Manager):
     if manager.email in managers:
         return {"Error": "This manager is already registered"}
 
+    hashed_pw = hash_password(manager.password)
     managers[manager.email] = {
         "email": manager.email,
         "name": manager.name,
         "department": manager.department,
-        "password": manager.password
+        "password": hashed_pw
     }
 
     return {"message": "Manager created", "data": managers[manager.email]}
