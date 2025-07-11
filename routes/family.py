@@ -1,9 +1,8 @@
 from app.database import familys, patients
-from app.models import UpdateFamily
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.database import hash_password
 from app.auth import get_current_family,create_access_token
-
+from app.models import UpdateFamily
 
 
 family_router = APIRouter()
@@ -45,7 +44,7 @@ async def update_family(new_data: UpdateFamily, current_family: dict = Depends(g
 
         response = {"success": True, "updated": current_family}
         if new_email and new_email != current_email:  # new email = Create new token - will automatically log in using frontend
-            new_token = create_access_token(data={"sub": new_email})
+            new_token = await create_access_token(data={"sub": new_email})
             response["new_token"] = new_token
 
         return response
@@ -53,7 +52,7 @@ async def update_family(new_data: UpdateFamily, current_family: dict = Depends(g
 
 
 @family_router.get("/family/me/patients")
-def get_family_patients(current_family: dict = Depends(get_current_family)):
+async def get_family_patients(current_family: dict = Depends(get_current_family)):
     patient_ids = current_family["user"]["assigned_patients"]
 
     assigned_patient_data = []
@@ -61,3 +60,21 @@ def get_family_patients(current_family: dict = Depends(get_current_family)):
         if pid in patients:
             assigned_patient_data.append(patients[pid])
     return {"patients": assigned_patient_data}
+
+
+@family_router.get("/family/me/patients/visit_logs")
+async def get_family_patients_visit_logs(current_family: dict = Depends(get_current_family)):
+    patient_ids = current_family["user"]["assigned_patients"]
+
+    assigned_patient_data = []
+    for pid in patient_ids:
+        if pid in patients:
+            patient = patients[pid]
+            patient_visit_logs = {
+                "patient_id": pid,
+                "patient_name": patient.get("name"),
+                "visit_logs": patient.get("visit_logs", {})
+            }
+            assigned_patient_data.append(patient_visit_logs)
+
+    return {"patients_visit_logs": assigned_patient_data}

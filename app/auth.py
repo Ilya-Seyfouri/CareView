@@ -28,7 +28,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 480
 
 
 
-async def get_user(email: str):
+def get_user(email: str):
     if email in carers:
         return {"user":carers[email], "user-type": "carer"}
     elif email in familys:
@@ -163,7 +163,7 @@ auth_router = APIRouter()
 async def login_user(login: LoginRequest):
     try:
 
-        user = authenticate_user(login.email, login.password)
+        user = await authenticate_user(login.email, login.password)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -175,7 +175,7 @@ async def login_user(login: LoginRequest):
         # If successful login, create the token
 
 
-        access_token = create_access_token(
+        access_token = await create_access_token(
             data={"sub": user["user"]["email"]}  # 'sub' contains carer email
         )
         return {"access_token": access_token, "token_type": "bearer"}

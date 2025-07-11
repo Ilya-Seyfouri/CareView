@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import List,Optional
+from typing import List,Optional,Dict
 from datetime import date,datetime
 
 class Token(BaseModel):
@@ -18,15 +18,20 @@ class Carer(BaseModel):
     assigned_patients: Optional[List[str]] = []
 
 
-
+class UpdateVisitLog(BaseModel):
+    id: Optional[str] = None
+    date: Optional[datetime] = None
+    showered: Optional[bool] = None
+    meds_given: Optional[str] = None
+    toilet: Optional[bool] = None
+    changed_clothes: Optional[bool] = None
+    ate_food: Optional[str] = None
+    notes: Optional[str] = None
+    mood: Optional[List[str]] = None
 
 
 class VisitLog(BaseModel):
-    #carer_email : EmailStr
-    #carer_number: str
-    #carer_name: str
-    #patient_id: str
-    #patient_name: str
+    id: str
     date: datetime
     showered: bool
     meds_given: str
@@ -35,7 +40,8 @@ class VisitLog(BaseModel):
     ate_food: str
     notes:str
     mood: Optional[List[str]] = []
-
+    carer_name: str
+    carer_number: Optional[str] = None
 
 
 
@@ -46,8 +52,7 @@ class Patient(BaseModel):
     room: str
     date_of_birth: date
     medical_history: str
-    visit_logs: Optional[List[VisitLog]] = Field(default_factory=list)
-
+    visit_logs: Optional[Dict[str,dict]] = Field(default_factory=dict)
 
 class Family(BaseModel):
     id: str
@@ -73,6 +78,10 @@ class UpdateCarer(BaseModel):
     email: Optional[EmailStr] = None
     name: Optional[str] = None
     password: Optional[str] = None
+    phone: Optional[str] = None
+    medical_history: Optional[str] = None
+
+
 
 
 class UpdatePatient(BaseModel):
@@ -81,6 +90,7 @@ class UpdatePatient(BaseModel):
     age: Optional[int] = None
     room: Optional[str] = None
     date_of_birth: Optional[date] = None
+    medical_history: Optional[str] = None
 
 
 class UpdateFamily(BaseModel):
@@ -88,7 +98,7 @@ class UpdateFamily(BaseModel):
     email: Optional[EmailStr] = None
     name: Optional[str] = None
     password: Optional[str] = None
-    phone: Optional[float] = None
+    phone: Optional[str] = None
 
 
 class UpdateManager(BaseModel):

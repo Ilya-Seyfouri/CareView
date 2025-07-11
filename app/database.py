@@ -116,7 +116,7 @@ patients = {
         "room": "101A",
         "date_of_birth": date(1946, 3, 15),
         "medical_history": "Diabetes Type 2, Hypertension, Previous stroke in 2020. Requires assistance with mobility and medication management.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P002": {
         "id": "P002",
@@ -125,7 +125,7 @@ patients = {
         "room": "102B",
         "date_of_birth": date(1942, 7, 22),
         "medical_history": "Alzheimer's disease, Osteoporosis, Falls risk. Needs supervision for all daily activities.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P003": {
         "id": "P003",
@@ -134,7 +134,7 @@ patients = {
         "room": "103A",
         "date_of_birth": date(1949, 11, 8),
         "medical_history": "COPD, Heart failure, Depression. Oxygen therapy required, limited mobility.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P004": {
         "id": "P004",
@@ -143,7 +143,7 @@ patients = {
         "room": "201C",
         "date_of_birth": date(1936, 1, 30),
         "medical_history": "Dementia, Arthritis, Previous hip fracture. Requires full assistance with personal care.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P005": {
         "id": "P005",
@@ -152,7 +152,7 @@ patients = {
         "room": "202A",
         "date_of_birth": date(1953, 9, 12),
         "medical_history": "Parkinson's disease, Swallowing difficulties. Requires modified diet and medication support.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P006": {
         "id": "P006",
@@ -161,7 +161,7 @@ patients = {
         "room": "203B",
         "date_of_birth": date(1945, 5, 18),
         "medical_history": "Stroke survivor, Left side weakness, Speech difficulties. Physiotherapy ongoing.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P007": {
         "id": "P007",
@@ -170,7 +170,7 @@ patients = {
         "room": "204A",
         "date_of_birth": date(1940, 12, 3),
         "medical_history": "Kidney disease, Diabetes, Vision impairment. Dialysis 3x weekly.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P008": {
         "id": "P008",
@@ -179,7 +179,7 @@ patients = {
         "room": "205C",
         "date_of_birth": date(1948, 4, 25),
         "medical_history": "Breast cancer survivor, Anxiety, Chronic pain. Pain management protocol in place.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P009": {
         "id": "P009",
@@ -188,7 +188,7 @@ patients = {
         "room": "206B",
         "date_of_birth": date(1944, 8, 14),
         "medical_history": "Multiple sclerosis, Wheelchair bound, Bladder incontinence. Requires specialized care.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P010": {
         "id": "P010",
@@ -197,7 +197,7 @@ patients = {
         "room": "301A",
         "date_of_birth": date(1951, 10, 7),
         "medical_history": "Recent hip replacement, Osteoarthritis, Mild cognitive decline. Rehabilitation in progress.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P011": {
         "id": "P011",
@@ -206,7 +206,7 @@ patients = {
         "room": "302B",
         "date_of_birth": date(1947, 6, 20),
         "medical_history": "Prostate cancer, Incontinence, Mild depression. Regular oncology follow-ups required.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P012": {
         "id": "P012",
@@ -215,7 +215,7 @@ patients = {
         "room": "303A",
         "date_of_birth": date(1939, 2, 14),
         "medical_history": "Macular degeneration, Hearing loss, Mobility issues. Requires sensory support aids.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P013": {
         "id": "P013",
@@ -224,7 +224,7 @@ patients = {
         "room": "304B",
         "date_of_birth": date(1943, 8, 5),
         "medical_history": "Alzheimer's disease, Wandering behavior, Sleep disturbances. Requires constant supervision.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P014": {
         "id": "P014",
@@ -233,7 +233,7 @@ patients = {
         "room": "305A",
         "date_of_birth": date(1948, 12, 18),
         "medical_history": "Chronic kidney disease, Hypertension, Anemia. Requires fluid monitoring and dialysis.",
-        "visit_logs": []
+        "visit_logs": {}
     },
     "P015": {
         "id": "P015",
@@ -242,7 +242,7 @@ patients = {
         "room": "306C",
         "date_of_birth": date(1950, 4, 2),
         "medical_history": "Recent amputation, Phantom limb pain, Depression. Prosthetic fitting in progress.",
-        "visit_logs": []
+        "visit_logs": {}
     }
 }
 

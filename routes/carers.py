@@ -91,35 +91,38 @@ async def update_carer(new_data: UpdateCarer, current_carer: dict = Depends(get_
     response = {"success": True, "updated": current_carer}
 
     if new_email and new_email != current_email:   #new email = Create new token - will automatically log in using frontend
-       new_token = create_access_token(data={"sub": new_email})
+       new_token = await create_access_token(data={"sub": new_email})
        response["new_token"] = new_token
     return response
 
 
-@carer_router.post("/carer/me/patients/{id}/visit-log")
-async def create_visit_log(id: str, visitlog: VisitLog, current_carer: dict = Depends(get_current_carer)):
+@carer_router.post("/carer/me/patients/{patient_id}/visit-log")
+async def create_visit_log(patient_id: str, visitlog: VisitLog, current_carer: dict = Depends(get_current_carer)):
     # Check if carer has assigned patients
     patient_list = current_carer["user"]["assigned_patients"]
 
     # Check if patient is assigned to this carer
-    if id not in patient_list:
+    if patient_id not in patient_list:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Patient not assigned to you"
         )
 
     # Check if patient exists in global patients dictionary
-    if id not in patients:
+
+
+    the_patient = patients.get(patient_id)
+
+    if not the_patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Patient not found"
         )
 
-    the_patient = patients[id]
-
     visit_log = {
         "carer_number": current_carer["user"]["phone"],
         "carer_name": current_carer["user"]["name"],
+        "id": visitlog.id,
         "date": visitlog.date,
         "showered": visitlog.showered,
         "meds_given": visitlog.meds_given,
@@ -130,11 +133,15 @@ async def create_visit_log(id: str, visitlog: VisitLog, current_carer: dict = De
         "mood": visitlog.mood or []
     }
 
-    # Initialize visit_logs if it doesn't exist
-    if "visit_logs" not in the_patient:
-        the_patient["visit_logs"] = []
 
-    the_patient["visit_logs"].append(visit_log)
+    if visitlog.id in the_patient["visit_logs"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Visit Log with this ID already exists"
+        )
+
+
+    the_patient["visit_logs"][visitlog.id] = visit_log
 
     return {
         "message": "Visit log created successfully",
