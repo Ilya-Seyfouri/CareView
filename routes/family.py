@@ -33,13 +33,21 @@ async def update_family(new_data: UpdateFamily, current_family: dict = Depends(g
             familys[new_email] = current_family["user"]
             del familys[current_email]          #Deleting old email key from dictonary
             ## Cause we deleted our old email key, we tell the code hey! were using new email key : point to the right data under the new email
+
+
         if new_password:
             current_family["user"]["password"] = hash_password(new_password)
             update_data.pop("password")
 
 
         current_family["user"].update(update_data)
-        return {"success": True, "updated": current_family}
+
+        response = {"success": True, "updated": current_family}
+        if new_email and new_email != current_email:  # new email = Create new token - will automatically log in using frontend
+            new_token = create_access_token(data={"sub": new_email})
+            response["new_token"] = new_token
+
+        return response
 
 
 

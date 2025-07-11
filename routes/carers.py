@@ -76,17 +76,23 @@ async def update_carer(new_data: UpdateCarer, current_carer: dict = Depends(get_
         carers[new_email] = current_carer["user"]
         del carers[current_email]
 
+
+
         # Update our reference to point to the new location
-        current_carer["user"].update(update_data)
 
     if new_password:
         current_carer["user"]["password"] = hash_password(new_password)
         update_data.pop("password")
 
     # Apply all field updates
-    current_carer.update(update_data)
+    current_carer["user"].update(update_data)
 
-    return {"success": True, "updated": current_carer}
+    response = {"success": True, "updated": current_carer}
+
+    if new_email and new_email != current_email:   #new email = Create new token - will automatically log in using frontend
+       new_token = create_access_token(data={"sub": new_email})
+       response["new_token"] = new_token
+    return response
 
 
 @carer_router.post("/carer/me/patients/{id}/visit-log")

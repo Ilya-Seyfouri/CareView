@@ -1,4 +1,4 @@
-from app.auth import hash_password,verify_password,get_current_manager,get_user
+from app.auth import hash_password, verify_password, get_current_manager, get_user, create_access_token
 from fastapi import APIRouter, HTTPException, status, Depends
 
 from app.models import Carer, Patient, Family, Manager, UpdateCarer, UpdatePatient, UpdateFamily, UpdateManager
@@ -122,16 +122,19 @@ async def update_manager(new_data: UpdateManager, current_manager: dict = Depend
         del managers[current_email]
 
         # Update our reference to point to the new location
-        current_manager["user"].update(update_data)
 
     if new_password:
         current_manager["user"]["password"] = hash_password(new_password)
         update_data.pop("password")
 
     # Apply all field updates
-    current_manager.update(update_data)
+    current_manager["user"].update(update_data)
 
-    return {"success": True, "updated": current_manager}
+    response = {"success": True, "updated": current_manager}
+    if new_email and new_email != current_email:   #new email = Create new token - will automatically log in using frontend
+       new_token = create_access_token(data={"sub": new_email})
+       response["new_token"] = new_token
+    return response
 
 
 # Updating all models
