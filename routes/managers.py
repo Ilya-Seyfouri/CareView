@@ -1,7 +1,9 @@
-from app.auth import hash_password,verify_password
-from fastapi import FastAPI, APIRouter
+from app.auth import hash_password,verify_password,get_current_manager,get_user
+from fastapi import APIRouter, HTTPException, status, Depends
+
 from app.models import Carer, Patient, Family, Manager, UpdateCarer, UpdatePatient, UpdateFamily, UpdateManager
 from app.database import carers, managers, familys, patients
+
 
 manager_router = APIRouter()
 
@@ -11,7 +13,7 @@ manager_router = APIRouter()
 
 # Creating Models
 
-@manager_router.post("/create/carer")
+@manager_router.post("/manager/create/carer")
 async def create_carer(carer: Carer):
     if carer.email in carers:
         return {"Error": "Carer with this email is already signed up"}
@@ -29,7 +31,7 @@ async def create_carer(carer: Carer):
     return {"message": "Carer created", "data": carers[carer.email]}
 
 
-@manager_router.post("/create/patient")
+@manager_router.post("/manager/create/patient")
 async def create_patient(patient: Patient):
     if patient.id in patients:
         return {"Error": "Patient has already been assigned to this ID"}
@@ -45,7 +47,7 @@ async def create_patient(patient: Patient):
     return {"message": "Patient Created", "data": patients[patient.id]}
 
 
-@manager_router.post("/create/family-member")
+@manager_router.post("/manager/create/family-member")
 async def create_family(family: Family):
     if family.email in familys:
         return {"Error": "This email is already in use"}
@@ -64,50 +66,67 @@ async def create_family(family: Family):
     return {"message": "Family Member Created", "data:": familys[family.email]}
 
 
-@manager_router.post("/create/manager")
-async def create_manager(manager: Manager):
-    if manager.email in managers:
-        return {"Error": "This manager is already registered"}
-
-    hashed_pw = hash_password(manager.password)
-    managers[manager.email] = {
-        "email": manager.email,
-        "name": manager.name,
-        "department": manager.department,
-        "password": hashed_pw
-    }
-
-    return {"message": "Manager created", "data": managers[manager.email]}
 
 
 # Getting all Models
 
-@manager_router.get("/get-all/patients")
+@manager_router.get("manager/get-all/patients")
 async def get_all_patients():
     return {"patients": list(patients.values())}
 
 
-@manager_router.get("/get-all/carers")
+@manager_router.get("/manager/get-all/carers")
 async def get_all_carers():
     return {"carers": list(carers.values())}
 
 
-@manager_router.get("/get-all/families")
+@manager_router.get("/manager/get-all/families")
 async def get_all_families():
     return {"families": list(familys.values())}
 
 
-@manager_router.get("/get-all/managers")
+@manager_router.get("/manager/get-all/managers")
 async def get_all_managers():
     return {"managers": list(managers.values())}
 
 
 # Get Manager by email
-@manager_router.get("/get-manager/{email}")
-async def get_manager(email: str):
-    if email not in managers:
-        return {"error": "Manager not found"}
-    return {"manager": managers[email]}
+@manager_router.get("/manager/me")
+async def get_manager(current_manager: dict = Depends(get_current_manager)):
+    return current_manager
+
+
+@manager_router.put("/manager/me")
+async def update_manager(new_data: UpdateManager, current_manager: dict = Depends(get_current_manager)):
+    current_email = current_manager["user"]["email"]
+    update_data = new_data.dict(exclude_unset=True)
+    new_email = update_data.get("email")
+    new_password = update_data.get("password")
+
+    # Handle email change if requested
+    if new_email and new_email != current_email:
+        # Check if new email already exists
+        if new_email in managers:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists"
+            )
+
+        # Move the carer data from old email key to new email key
+        managers[new_email] = current_manager["email"]
+        del managers[current_email]
+
+        # Update our reference to point to the new location
+        current_manager["user"].update(update_data)
+
+    if new_password:
+        current_manager["user"]["password"] = hash_password(new_password)
+        update_data.pop("password")
+
+    # Apply all field updates
+    current_manager.update(update_data)
+
+    return {"success": True, "updated": current_manager}
 
 
 # Updating all models
@@ -132,27 +151,9 @@ async def update_patient(patient_id: str, new_data: UpdatePatient):
     return {"message": "Patient updated", "data": patients[patient_id]}
 
 
-@manager_router.put("/update/manager/{email}")
-async def update_manager(email: str, new_data: UpdateManager):
-    if email not in managers:
-        return {"error": "Manager not found"}
 
-    current = managers[email]
-    update_data = new_data.dict(exclude_unset=True)
-    new_email = update_data.get("email")
 
-    if new_email and new_email != email and new_email in managers:
-        return {"Error": "This email is already in use!"}
 
-    # If email changed, move data to new key
-    if new_email and new_email != email:
-        managers[new_email] = current
-        del managers[email]
-        email = new_email
-
-    current.update(update_data)
-
-    return {"message": "Manager updated", "data": current}
 # Deletion
 
 @manager_router.delete("/delete/carer/{email}")
@@ -179,9 +180,3 @@ async def delete_family(email: str):
     return {"message": f"Family member with email {email} deleted"}
 
 
-@manager_router.delete("/delete/manager/{email}")
-async def delete_manager(email: str):
-    if email not in managers:
-        return {"error": "Manager not found"}
-    del managers[email]
-    return {"message": f"Manager with email {email} deleted"}

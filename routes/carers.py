@@ -1,123 +1,118 @@
 from app.database import carers, managers, familys, patients
-from app.models import UpdateCarer,VisitLog,LoginRequest,Token
-from app.auth import hash_password,verify_password,create_access_token,get_current_carer,authenticate_carer
+from app.models import UpdateCarer, VisitLog, LoginRequest, Token
+from app.auth import hash_password, verify_password, create_access_token, get_current_carer, authenticate_user
 from fastapi import APIRouter, HTTPException, status, Depends
-
-
-
-
 
 carer_router = APIRouter()
 
 
 
-
-@carer_router.post("/carer/login", response_model=Token)
-async def login_carer(login: LoginRequest):
-    carer = authenticate_carer(login.email, login.password)     #Using our authenticate function to check if login valid
-    if not carer:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    #If successful login, create the token
-    access_token = create_access_token(
-        data={"sub": carer["email"]}  # 'sub' contains carer email
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-
-
-
-
-
-#View own Details VIA TOKEN NOW!
 @carer_router.get("/carer/me")
 async def get_carer_details(current_carer: dict = Depends(get_current_carer)):
     return current_carer
 
 
-#Change {email to /me
+@carer_router.get("/carer/me/patients")
+async def get_assigned_patients(current_carer: dict = Depends(get_current_carer)):
+    # Check if assigned_patients exists
+    assigned_patient_ids = current_carer["user"]["assigned_patients"]
+
+    # Get full patient data for each ID, skip if patient doesn't exist
+    assigned_patient_data = []
+    for pid in assigned_patient_ids:
+        if pid in patients:
+            patient = patients[pid]
+            patient_summary = {
+                "id": patient.get("id"),
+                "name": patient.get("name"),
+                "age": patient.get("age"),
+                "room": patient.get("room"),
+                "date_of_birth": patient.get("date_of_birth"),
+                "medical_history": patient.get("medical_history")
+            }
+            assigned_patient_data.append(patient_summary)
+    return assigned_patient_data
 
 
+@carer_router.get("/carer/me/patients/{id}")
+async def get_assigned_patients_by_id(id: str, current_carer: dict = Depends(get_current_carer)):
+    # Check if carer has assigned patients
+    patient_list = current_carer["user"]["assigned_patients"]
+
+    # Check if patient is assigned to this carer
+    if id not in patient_list:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Patient not assigned to you"
+        )
+
+    # Check if patient exists in global patients
+    if id not in patients:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+
+    return {"Patient": patients[id]}
 
 
+@carer_router.put("/carer/me")
+async def update_carer(new_data: UpdateCarer, current_carer: dict = Depends(get_current_carer)):
+    current_email = current_carer["user"]["email"]
+    update_data = new_data.dict(exclude_unset=True)
+    new_email = update_data.get("email")
+    new_password = update_data.get("password")
 
-#View All Patients assigned to career
-@carer_router.get("/carer/{email}/patients")
-async def get_assigned_patients(email: str):
-    # ✅ Check if the given email exists in the carers dictionary
-    if email not in carers:
-        return {"error": "Carer not found"}
+    # Handle email change if requested
+    if new_email and new_email != current_email:
+        # Check if new email already exists
+        if new_email in carers:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists"
+            )
 
-    # ✅ Get the carer's profile
-    carer = carers[email]
+        # Move the carer data from old email key to new email key
+        carers[new_email] = current_carer["user"]
+        del carers[current_email]
 
-    # ✅ Get list of assigned patient IDs
-    assigned_patient_ids = carer.get("assigned_patients", [])
+        # Update our reference to point to the new location
+        current_carer["user"].update(update_data)
 
-    # ✅ Retrieve full patient data
-    assigned_patient_data = [
-        patients[pid] for pid in assigned_patient_ids if pid in patients
-    ]
+    if new_password:
+        current_carer["user"]["password"] = hash_password(new_password)
+        update_data.pop("password")
 
-    # ✅ Return only the assigned patients' details
-    return {"assigned_patients": assigned_patient_data}
+    # Apply all field updates
+    current_carer.update(update_data)
 
-
-#View specific patient ID which carer assigned to
-
-@carer_router.get("/carer/{email}/patients/{id}")
-async def get_assigned_patients_by_id(email: str, id: str):
-    if email not in carers:
-        return{"Error": "Carer not found"}
-
-    carer = carers[email]
-    assigned_patients_ids = carer.get("assigned_patients", [])
-    if id not in assigned_patients_ids:
-        return {"Error":"Patient not found"}
-
-    patient = patients[id]
-    return {"Patient":patient}
+    return {"success": True, "updated": current_carer}
 
 
+@carer_router.post("/carer/me/patients/{id}/visit-log")
+async def create_visit_log(id: str, visitlog: VisitLog, current_carer: dict = Depends(get_current_carer)):
+    # Check if carer has assigned patients
+    patient_list = current_carer["user"]["assigned_patients"]
 
+    # Check if patient is assigned to this carer
+    if id not in patient_list:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Patient not assigned to you"
+        )
 
-#Update Carer Details
-@carer_router.put("/carer/{email}")
-async def update_carer(email: str, new_data: UpdateCarer):
-    if email not in carers:  # Check if carer exists
-        return {"error": "Carer not found"}
+    # Check if patient exists in global patients dictionary
+    if id not in patients:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
 
-    current = carers[email]  # Get current carer data
-    update_data = new_data.dict(exclude_unset=True)  # Prepare update data
-    new_email = update_data.get("email")  # Check if new email provided
+    the_patient = patients[id]
 
-    if new_email and new_email != email:  # If new email is different
-        if new_email in carers:  # Check for email uniqueness
-            return {"error": "This email is already in use!"}
-        carers[new_email] = current  # Move data to new email key
-        del carers[email]  # Delete old key
-        email = new_email  # Update variable
-
-    carers[email].update(update_data)  # Update fields
-    return {"message": "Carer updated", "data": carers[email]}
-
-
-
-#Create patient visit log
-
-@carer_router.post("/carer/{email}/patients/{id}/visit-log")
-async def create_visit_log(id: str, email: str,visitlog: VisitLog):
-    visitlog = {
-
-        "carer_email": carers[email]["email"],        #Not reentering valeus we already have
-        "carer_number": carers[email]["phone"],
-        "carer_name": carers[email]["name"],
-        "patient_id": patients[id]["id"],
-        "patient_name": patients[id]["name"],
+    visit_log = {
+        "carer_number": current_carer["user"]["phone"],
+        "carer_name": current_carer["user"]["name"],
         "date": visitlog.date,
         "showered": visitlog.showered,
         "meds_given": visitlog.meds_given,
@@ -128,14 +123,13 @@ async def create_visit_log(id: str, email: str,visitlog: VisitLog):
         "mood": visitlog.mood or []
     }
 
-    patient = patients[id]
+    # Initialize visit_logs if it doesn't exist
+    if "visit_logs" not in the_patient:
+        the_patient["visit_logs"] = []
 
-    patient.visit_logs.append(visitlog)
+    the_patient["visit_logs"].append(visit_log)
 
-
-    return {"message": "Visit log created successfully", "visit_log": visitlog}
-
-
-
-
-
+    return {
+        "message": "Visit log created successfully",
+        "visit_log": visit_log
+    }

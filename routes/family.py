@@ -1,48 +1,52 @@
-from app.database import carers, managers, familys,patients
+from app.database import carers, managers, familys, patients
 from app.models import UpdateFamily
-from fastapi import APIRouter
-from app.auth import hash_password,verify_password
+from fastapi import APIRouter, HTTPException, status, Depends
+from app.auth import hash_password, verify_password, create_access_token, get_current_carer, authenticate_user, get_current_family
+
 
 
 family_router = APIRouter()
 
+
+
+
 # Get Family member by email
-@family_router.get("/family/{email}")
-async def get_family(email: str):
-    if email not in familys:
-        return {"error": "Family member not found"}
-    family = familys[email]
+@family_router.get("/family/me")
+async def get_family_details(current_family: dict = Depends(get_current_family)):
+    return current_family
 
-    assigned_patient_ids = family.get("Assigned Patients",[])
+@family_router.put("/family/me")
+async def update_family(new_data: UpdateFamily, current_family: dict = Depends(get_current_family)):
+        current_email = current_family["user"]["email"]
+        update_data = new_data.dict(exclude_unset=True)
+        new_email = update_data.get("email")
+        new_password = update_data.get("password")
 
-    assigned_patient_data = []
+        if new_email and new_email != current_email:
+            if new_email in familys:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already exists"
+                )
 
-    for pid in assigned_patient_ids:
-        patient = patients.get(pid)
-        if patient:
-            assigned_patient_data.append(patient)
-    return {
-        "Family": family,
-        "assigned_patients": assigned_patient_data
-    }
+            # Assign the existing family data to the new email key
+            familys[new_email] = current_family["user"]
+            del familys[current_email]          #Deleting old email key from dictonary
+            ## Cause we deleted our old email key, we tell the code hey! were using new email key : point to the right data under the new email
+        if new_password:
+            current_family["user"]["password"] = hash_password(new_password)
+            update_data.pop("password")
+
+
+        current_family["user"].update(update_data)
+        return {"success": True, "updated": current_family}
 
 
 
-@family_router.put("/family/{email}")
-async def update_family(email: str, new_data: UpdateFamily):
-    if email not in familys:  # Check if family member exists
-        return {"error": "Family member not found"}
+@family_router.get("/family/me/patients")
+def get_family_patients(current_family: dict = Depends(get_current_family)):
+    patient_ids = current_family["user"]["assigned_patients"]
 
-    current = familys[email]  # Get current data
-    update_data = new_data.dict(exclude_unset=True)  # Prepare update data
-    new_email = update_data.get("email")  # Check if new email provided
-
-    if new_email and new_email != email:  # If email is changing
-        if new_email in familys:  # Check uniqueness
-            return {"error": "This email is already in use!"}
-        familys[new_email] = current  # Move to new key
-        del familys[email]  # Delete old
-        email = new_email  # Update var
-
-    familys[email].update(update_data)  # Update fields
-    return {"message": "Family member updated", "data": familys[email]}
+    for pid in patient_ids:
+        patient_data = patients[pid]
+        return patient_data
