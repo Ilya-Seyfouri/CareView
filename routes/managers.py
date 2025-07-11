@@ -14,13 +14,18 @@ manager_router = APIRouter()
 # Creating Models
 
 @manager_router.post("/manager/create/carer")
-async def create_carer(carer: Carer):
-    if carer.email in carers:
-        return {"Error": "Carer with this email is already signed up"}
 
-    hashed_pw = hash_password(carer.password)
+async def create_carer(carer: Carer,current_manager:dict = Depends(get_current_manager)):
 
-    carers[carer.email] = {
+
+
+   if carer.email in carers:
+       return {"Error": "Carer with this email is already signed up"}
+
+
+
+   hashed_pw = hash_password(carer.password)
+   carers[carer.email] = {
         "email": carer.email,
         "name": carer.name,
         "password": hashed_pw,
@@ -28,11 +33,11 @@ async def create_carer(carer: Carer):
         "Assigned Patients": carer.assigned_patients
     }
 
-    return {"message": "Carer created", "data": carers[carer.email]}
+   return {"message": "Carer created", "data": carers[carer.email]}
 
 
 @manager_router.post("/manager/create/patient")
-async def create_patient(patient: Patient):
+async def create_patient(patient: Patient, current_manager: dict = Depends(get_current_manager)):
     if patient.id in patients:
         return {"Error": "Patient has already been assigned to this ID"}
     patients[patient.id] = {
@@ -44,11 +49,11 @@ async def create_patient(patient: Patient):
         "Medical History": patient.medical_history
     }
 
-    return {"message": "Patient Created", "data": patients[patient.id]}
+    return {"message": "Patient Created", "data": patients[patient.id], "usertype": current_manager["user-type"]}
 
 
 @manager_router.post("/manager/create/family-member")
-async def create_family(family: Family):
+async def create_family(family: Family, current_manager: dict = Depends(get_current_manager)):
     if family.email in familys:
         return {"Error": "This email is already in use"}
 
@@ -71,22 +76,22 @@ async def create_family(family: Family):
 # Getting all Models
 
 @manager_router.get("manager/get-all/patients")
-async def get_all_patients():
+async def get_all_patients(current_manager: dict = Depends(get_current_manager)):
     return {"patients": list(patients.values())}
 
 
 @manager_router.get("/manager/get-all/carers")
-async def get_all_carers():
+async def get_all_carers(current_manager: dict = Depends(get_current_manager)):
     return {"carers": list(carers.values())}
 
 
 @manager_router.get("/manager/get-all/families")
-async def get_all_families():
+async def get_all_families(current_manager: dict = Depends(get_current_manager)):
     return {"families": list(familys.values())}
 
 
 @manager_router.get("/manager/get-all/managers")
-async def get_all_managers():
+async def get_all_managers(current_manager: dict = Depends(get_current_manager)):
     return {"managers": list(managers.values())}
 
 
@@ -132,7 +137,7 @@ async def update_manager(new_data: UpdateManager, current_manager: dict = Depend
 # Updating all models
 
 @manager_router.put("/update/patient/{patient_id}")
-async def update_patient(patient_id: str, new_data: UpdatePatient):
+async def update_patient(patient_id: str, new_data: UpdatePatient, current_manager: dict = Depends(get_current_manager)):
     if patient_id not in patients:  # Check if patient exists
         return {"error": "Patient not found"}
 
@@ -157,7 +162,7 @@ async def update_patient(patient_id: str, new_data: UpdatePatient):
 # Deletion
 
 @manager_router.delete("/delete/carer/{email}")
-async def delete_carer(email: str):
+async def delete_carer(email: str, current_manager: dict = Depends(get_current_manager)):
     if email not in carers:
         return {"error": "Carer not found"}
     del carers[email]
@@ -165,7 +170,7 @@ async def delete_carer(email: str):
 
 
 @manager_router.delete("/delete/patient/{patient_id}")
-async def delete_patient(patient_id: str):
+async def delete_patient(patient_id: str, current_manager: dict = Depends(get_current_manager)):
     if patient_id not in patients:
         return {"error": "Patient not found"}
     del patients[patient_id]
@@ -173,7 +178,7 @@ async def delete_patient(patient_id: str):
 
 
 @manager_router.delete("/delete/family/{email}")
-async def delete_family(email: str):
+async def delete_family(email: str, current_manager: dict = Depends(get_current_manager)):
     if email not in familys:
         return {"error": "Family member not found"}
     del familys[email]

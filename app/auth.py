@@ -63,6 +63,7 @@ def create_access_token(data: dict):
 
 async def get_current_carer(credentials: HTTPAuthorizationCredentials = Depends(security)):
 
+
     invalid = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -78,10 +79,20 @@ async def get_current_carer(credentials: HTTPAuthorizationCredentials = Depends(
         raise invalid  #token is expired / invalid
 
 
+
+
     carer = get_user(email=email)   #get carer using token ID
     if carer is None:
         raise invalid
+    if carer["user-type"] != "carer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Carer role required."
+        )
     return carer
+
+
+
 
 async def get_current_family(credentials: HTTPAuthorizationCredentials = Depends(security)):
     invalid = HTTPException(
@@ -101,6 +112,11 @@ async def get_current_family(credentials: HTTPAuthorizationCredentials = Depends
     family = get_user(email=email)  # get carer using token ID
     if family is None:
         raise invalid
+    if family["user-type"] != "family-member":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. family role required."
+        )
     return family
 
 
@@ -124,6 +140,11 @@ async def get_current_manager(credentials: HTTPAuthorizationCredentials = Depend
     manager = get_user(email=email)  # get carer using token ID
     if manager is None:
         raise invalid
+    if manager["user-type"] != "manager":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. manager role required."
+        )
     return manager
 
 
