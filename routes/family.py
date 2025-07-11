@@ -1,7 +1,8 @@
-from app.database import carers, managers, familys, patients
+from app.database import familys, patients
 from app.models import UpdateFamily
 from fastapi import APIRouter, HTTPException, status, Depends
-from app.auth import hash_password, verify_password, create_access_token, get_current_carer, authenticate_user, get_current_family
+from app.database import hash_password
+from app.auth import get_current_family,create_access_token
 
 
 
@@ -55,6 +56,8 @@ async def update_family(new_data: UpdateFamily, current_family: dict = Depends(g
 def get_family_patients(current_family: dict = Depends(get_current_family)):
     patient_ids = current_family["user"]["assigned_patients"]
 
+    assigned_patient_data = []
     for pid in patient_ids:
-        patient_data = patients[pid]
-        return patient_data
+        if pid in patients:
+            assigned_patient_data.append(patients[pid])
+    return {"patients": assigned_patient_data}

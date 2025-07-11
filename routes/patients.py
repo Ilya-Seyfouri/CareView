@@ -1,7 +1,5 @@
-from app.database import carers, managers, familys,patients
-from app.models import UpdatePatient
+from app.database import patients
 from fastapi import APIRouter
-from app.auth import hash_password,verify_password
 
 patient_router = APIRouter()
 

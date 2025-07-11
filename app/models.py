@@ -1,4 +1,3 @@
-from botocore.auth import BearerAuth
 from pydantic import BaseModel, EmailStr, Field
 from typing import List,Optional
 from datetime import date,datetime
@@ -15,8 +14,8 @@ class Carer(BaseModel):
     email: EmailStr
     name: str
     password: str
-    phone: float
-    assigned_patients: List[Optional[str]] = []
+    phone: str
+    assigned_patients: Optional[List[str]] = []
 
 
 
@@ -55,8 +54,8 @@ class Family(BaseModel):
     email: EmailStr
     name: str
     password: str
-    phone: float
-    assigned_patients: List[Optional[str]] = None
+    phone: str
+    assigned_patients: Optional[List[str]] = []
 
 
 class Manager(BaseModel):

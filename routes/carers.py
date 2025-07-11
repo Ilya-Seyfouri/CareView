@@ -1,6 +1,7 @@
-from app.database import carers, managers, familys, patients
-from app.models import UpdateCarer, VisitLog, LoginRequest, Token
-from app.auth import hash_password, verify_password, create_access_token, get_current_carer, authenticate_user
+from app.database import carers,patients
+from app.models import UpdateCarer, VisitLog
+from app.database import hash_password
+from app.auth import create_access_token, get_current_carer
 from fastapi import APIRouter, HTTPException, status, Depends
 
 carer_router = APIRouter()

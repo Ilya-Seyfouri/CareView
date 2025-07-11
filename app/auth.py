@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import APIRouter, HTTPException, status, Depends
 import jwt  # This will work after installing PyJWT
 from datetime import datetime, timedelta
-from app.database import carers, managers, familys, hash_password, verify_password
+from app.database import carers, managers, familys, verify_password
 from app.models import Token, LoginRequest
 
 
@@ -28,7 +28,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 480
 
 
 
-def get_user(email: str):
+async def get_user(email: str):
     if email in carers:
         return {"user":carers[email], "user-type": "carer"}
     elif email in familys:
@@ -38,7 +38,7 @@ def get_user(email: str):
     return None
 
 
-def authenticate_user(email: str, password: str):
+async def authenticate_user(email: str, password: str):
     user_data = get_user(email) #use the above function to get carer details
     if not user_data:
         return False
@@ -49,7 +49,7 @@ def authenticate_user(email: str, password: str):
 
 
 
-def create_access_token(data: dict):
+async def create_access_token(data: dict):
     copy_data = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     copy_data.update({"exp": expire})

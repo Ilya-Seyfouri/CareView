@@ -1,7 +1,8 @@
-from app.auth import hash_password, verify_password, get_current_manager, get_user, create_access_token
+from app.database import hash_password
+from app.auth import get_current_manager, create_access_token
 from fastapi import APIRouter, HTTPException, status, Depends
 
-from app.models import Carer, Patient, Family, Manager, UpdateCarer, UpdatePatient, UpdateFamily, UpdateManager
+from app.models import Carer, Patient, Family,UpdatePatient, UpdateManager
 from app.database import carers, managers, familys, patients
 
 
@@ -16,8 +17,6 @@ manager_router = APIRouter()
 @manager_router.post("/manager/create/carer")
 
 async def create_carer(carer: Carer,current_manager:dict = Depends(get_current_manager)):
-
-
 
    if carer.email in carers:
        return {"Error": "Carer with this email is already signed up"}
@@ -45,8 +44,8 @@ async def create_patient(patient: Patient, current_manager: dict = Depends(get_c
         "name": patient.name,
         "age": patient.age,
         "room": patient.room,
-        "Date of Birth:": patient.date_of_birth,
-        "Medical History": patient.medical_history
+        "date_of_birth": patient.date_of_birth,
+        "medical_history": patient.medical_history
     }
 
     return {"message": "Patient Created", "data": patients[patient.id], "usertype": current_manager["user-type"]}
@@ -63,19 +62,19 @@ async def create_family(family: Family, current_manager: dict = Depends(get_curr
         "email": family.email,
         "id": family.id,
         "name": family.name,
-        "phone-number": family.phone,
+        "phone": family.phone,
         "password": hashed_pw,
-        "Assigned Patients": family.assigned_patients
+        "assigned_patients": family.assigned_patients
 
     }
-    return {"message": "Family Member Created", "data:": familys[family.email]}
+    return {"message": "Family Member Created", "data": familys[family.email]}
 
 
 
 
 # Getting all Models
 
-@manager_router.get("manager/get-all/patients")
+@manager_router.get("/manager/get-all/patients")
 async def get_all_patients(current_manager: dict = Depends(get_current_manager)):
     return {"patients": list(patients.values())}
 
@@ -118,7 +117,7 @@ async def update_manager(new_data: UpdateManager, current_manager: dict = Depend
             )
 
         # Move the carer data from old email key to new email key
-        managers[new_email] = current_manager["email"]
+        managers[new_email] = current_manager["user"]
         del managers[current_email]
 
         # Update our reference to point to the new location
@@ -168,8 +167,12 @@ async def update_patient(patient_id: str, new_data: UpdatePatient, current_manag
 async def delete_carer(email: str, current_manager: dict = Depends(get_current_manager)):
     if email not in carers:
         return {"error": "Carer not found"}
+    orphaned_patients = carers[email].get("assigned_patients", [])
+
     del carers[email]
-    return {"message": f"Carer with email {email} deleted"}
+    return {
+        "message": f"Carer with email {email} deleted",
+        "patients_needing_reassignment": orphaned_patients}
 
 
 @manager_router.delete("/delete/patient/{patient_id}")
