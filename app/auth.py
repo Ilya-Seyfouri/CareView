@@ -5,7 +5,7 @@ import jwt  # This will work after installing PyJWT
 from datetime import datetime, timedelta
 from app.database import carers, managers, familys, verify_password
 from app.models import Token, LoginRequest
-
+from typing import List
 
 # Auth.py - Login system, lets users login with their password + email and creates a token
 # That token gives them a digital key to use other parts of the app
@@ -146,6 +146,18 @@ async def get_current_manager(credentials: HTTPAuthorizationCredentials = Depend
             detail="Access denied. manager role required."
         )
     return manager
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
