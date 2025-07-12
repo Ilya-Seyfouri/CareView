@@ -1,4 +1,6 @@
-from app.database import familys, patients
+from datetime import datetime
+
+from app.database import familys, patients,carers,schedules
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.database import hash_password
 from app.auth import get_current_family, create_access_token
@@ -98,3 +100,76 @@ async def get_specific_visit_log(visit_log_id: str, current_family: dict = Depen
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Visit log not found or not accessible to this family member"
     )
+
+
+@family_router.get("/family/me/schedules")
+async def get_patient_schedules(current_family: dict = Depends(get_current_family)):
+    assigned_patient_ids = current_family["user"]["assigned_patients"]
+    patient_schedules = []
+
+    for schedule in schedules.values():
+        if schedule["patient_id"] in assigned_patient_ids:
+            enriched_schedule = schedule.copy()
+
+            # Add patient details
+            if schedule["patient_id"] in patients:
+                patient = patients[schedule["patient_id"]]
+                enriched_schedule["patient_details"] = {
+                    "id": patient["id"],
+                    "name": patient["name"],
+                    "room": patient["room"]
+                }
+
+            # Add carer details
+            if schedule["carer_email"] in carers:
+                carer = carers[schedule["carer_email"]]
+                enriched_schedule["carer_details"] = {
+                    "name": carer["name"],
+                    "phone": carer["phone"],
+                    "email": carer["email"]
+                }
+
+            patient_schedules.append(enriched_schedule)
+
+    # Sort by start time
+    patient_schedules.sort(key=lambda x: x["start_time"])
+
+    return {"schedules": patient_schedules}
+
+
+@family_router.get("/family/me/schedules/upcoming")
+async def get_upcoming_schedules(current_family: dict = Depends(get_current_family)):
+    assigned_patient_ids = current_family["user"]["assigned_patients"]
+    now = datetime.now()
+    upcoming_schedules = []
+
+    for schedule in schedules.values():
+        if (schedule["patient_id"] in assigned_patient_ids and
+                schedule["start_time"] > now and
+                schedule["status"] == "scheduled"):
+
+            enriched_schedule = schedule.copy()
+
+            # Add patient details
+            if schedule["patient_id"] in patients:
+                patient = patients[schedule["patient_id"]]
+                enriched_schedule["patient_details"] = {
+                    "id": patient["id"],
+                    "name": patient["name"],
+                    "room": patient["room"]
+                }
+
+            # Add carer details
+            if schedule["carer_email"] in carers:
+                carer = carers[schedule["carer_email"]]
+                enriched_schedule["carer_details"] = {
+                    "name": carer["name"],
+                    "phone": carer["phone"]
+                }
+
+            upcoming_schedules.append(enriched_schedule)
+
+    # Sort by start time
+    upcoming_schedules.sort(key=lambda x: x["start_time"])
+
+    return {"schedules": upcoming_schedules}

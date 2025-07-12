@@ -1,12 +1,14 @@
-from starlette.status import HTTP_400_BAD_REQUEST
+import uuid
+from datetime import datetime
+
 
 from app.database import hash_password
 from app.auth import get_current_manager, create_access_token
 from fastapi import APIRouter, HTTPException, status, Depends
 
 from app.models import Carer, Patient, Family, UpdatePatient, UpdateFamily, UpdateCarer, UpdateManager, VisitLog, \
-    UpdateVisitLog
-from app.database import carers, managers, familys, patients
+    UpdateVisitLog, Schedule, UpdateSchedule, CreateSchedule
+from app.database import carers, managers, familys, patients,schedules
 
 manager_router = APIRouter()
 
@@ -352,3 +354,129 @@ async def delete_visit_log(patient_id: str, visit_log_id: str, current_manager: 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visit log not found")
 
     return {"message": "Visit log deleted successfully", "deleted_log": deleted_log}
+
+
+
+# -----------------------------
+# Schedule Routes
+# -----------------------------
+
+@manager_router.post("/manager/schedules")
+async def create_schedule(schedule_data: CreateSchedule, current_manager: dict = Depends(get_current_manager)):
+
+    # Validate carer and patient exist
+    if schedule_data.carer_email not in carers:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carer not found")
+    if schedule_data.patient_id not in patients:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+
+    # Create schedule
+    schedule_id = f"SCH{str(uuid.uuid4())[:8].upper()}"
+
+    new_schedule = {
+        "id": schedule_id,
+        "carer_email": schedule_data.carer_email,
+        "patient_id": schedule_data.patient_id,
+        "date": schedule_data.date,
+        "start_time": schedule_data.start_time,
+        "end_time": schedule_data.end_time,
+        "shift_type": schedule_data.shift_type,
+        "status": "scheduled",
+        "notes": schedule_data.notes,
+        "created_by": current_manager["user"]["email"],
+        "created_at": datetime.now()
+    }
+
+    schedules[schedule_id] = new_schedule
+    return {"message": "Schedule created successfully", "schedule": new_schedule}
+
+
+@manager_router.get("/manager/schedules")
+async def get_all_schedules(current_manager: dict = Depends(get_current_manager)):
+    enriched_schedules = []
+
+    for schedule in schedules.values():
+        enriched_schedule = schedule.copy()
+
+        # Add carer details
+        if schedule["carer_email"] in carers:
+            carer = carers[schedule["carer_email"]]
+            enriched_schedule["carer_details"] = {
+                "name": carer["name"],
+                "phone": carer["phone"]
+            }
+
+        # Add patient details
+        if schedule["patient_id"] in patients:
+            patient = patients[schedule["patient_id"]]
+            enriched_schedule["patient_details"] = {
+                "name": patient["name"],
+                "room": patient["room"],
+                "age": patient["age"]
+            }
+
+        enriched_schedules.append(enriched_schedule)
+
+    return {"schedules": enriched_schedules}
+
+
+@manager_router.get("/manager/schedules/{schedule_id}")
+async def get_schedule(schedule_id: str, current_manager: dict = Depends(get_current_manager)):
+    if schedule_id not in schedules:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Schedule not found"
+        )
+
+    return {"schedule": schedules[schedule_id]}
+
+
+
+
+@manager_router.delete("/manager/schedules/{schedule_id}")
+async def delete_schedule(schedule_id: str, current_manager: dict = Depends(get_current_manager)):
+    if schedule_id not in schedules:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Schedule not found"
+        )
+
+    deleted_schedule = schedules.pop(schedule_id)
+
+    return {
+        "message": "Schedule deleted successfully",
+        "deleted_schedule": deleted_schedule
+    }
+
+
+import uuid
+from datetime import datetime
+from fastapi import HTTPException, status, Depends
+
+
+
+
+@manager_router.put("/manager/schedules/{schedule_id}")
+async def update_schedule(schedule_id: str, update_data: UpdateSchedule,
+                          current_manager: dict = Depends(get_current_manager)):
+
+    if schedule_id not in schedules:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Schedule not found")
+
+    schedule = schedules[schedule_id]
+    update_fields = update_data.dict(exclude_unset=True)
+
+    # Validate carer if being updated
+    if "carer_email" in update_fields and update_fields["carer_email"] not in carers:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carer not found")
+
+    # Validate patient if being updated
+    if "patient_id" in update_fields and update_fields["patient_id"] not in patients:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+
+    # Update the schedule
+    schedule.update(update_fields)
+    return {"message": "Schedule updated successfully", "schedule": schedule}
+
+
+

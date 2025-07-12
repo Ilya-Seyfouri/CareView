@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date,time
 from passlib.context import CryptContext
 pass_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from uuid import uuid4
@@ -9,6 +9,36 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pass_context.verify(plain_password, hashed_password)
+
+
+schedules = {
+    "SCH001": {
+        "id": "SCH001",
+        "carer_email": "sarah.jones@healthcorp.com",
+        "patient_id": "P004",
+        "date": date(2024, 7, 15),
+        "start_time": time(8, 0),
+        "end_time": time(16, 0),
+        "shift_type": "morning",
+        "status": "scheduled",
+        "notes": "Regular morning care routine",
+        "created_by": "dr.smith@healthcorp.com",
+        "created_at": datetime(2024, 7, 12, 10, 0)
+    },
+    "SCH002": {
+        "id": "SCH002",
+        "carer_email": "mike.wilson@healthcorp.com",
+        "patient_id": "P001",
+        "date": date(2024, 7, 15),
+        "start_time": time(14, 0),
+        "end_time": time(18, 0),
+        "shift_type": "afternoon",
+        "status": "scheduled",
+        "notes": "Physiotherapy session included",
+        "created_by": "nurse.supervisor@healthcorp.com",
+        "created_at": datetime(2024, 7, 12, 11, 30)
+    }
+}
 
 carers = {
     "sarah.jones@healthcorp.com": {

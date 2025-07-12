@@ -1,8 +1,8 @@
-from app.database import carers, patients
-from app.models import UpdateCarer, VisitLog, UpdateVisitLog
-from app.database import hash_password
+from app.database import carers, patients, hash_password,schedules
+from app.models import UpdateCarer, VisitLog, UpdateVisitLog,UpdateSchedule
 from app.auth import create_access_token, get_current_carer
 from fastapi import APIRouter, HTTPException, status, Depends
+from app.database import schedules
 
 carer_router = APIRouter()
 
@@ -238,3 +238,64 @@ async def update_visit_log(patient_id: str, visit_log_id: str, new_data: UpdateV
     visit_log.update(update_data)
 
     return {"success": True, "updated": visit_log}
+
+
+@carer_router.get("/carer/me/schedules")
+async def get_my_schedules(current_carer: dict = Depends(get_current_carer)):
+    carer_email = current_carer["user"]["email"]
+    carer_schedules = []
+
+    for schedule in schedules.values():
+        if schedule["carer_email"] == carer_email:
+            enriched_schedule = schedule.copy()
+
+            # Add patient details
+            if schedule["patient_id"] in patients:
+                patient = patients[schedule["patient_id"]]
+                enriched_schedule["patient_details"] = {
+                    "id": patient["id"],
+                    "name": patient["name"],
+                    "room": patient["room"],
+                    "age": patient["age"],
+                    "medical_history": patient["medical_history"]
+                }
+
+            carer_schedules.append(enriched_schedule)
+
+    # Sort by start time
+    carer_schedules.sort(key=lambda x: x["start_time"])
+
+    return {"schedules": carer_schedules}
+
+
+@carer_router.put("/carer/me/schedules/{schedule_id}/status")
+async def update_schedule_status(schedule_id: str, new_status: str, current_carer: dict = Depends(get_current_carer)):
+    """FIXED: Update schedule status - parameter name changed"""
+
+    if schedule_id not in schedules:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Schedule not found"
+        )
+
+    schedule = schedules[schedule_id]
+    carer_email = current_carer["user"]["email"]
+
+    # Verify this schedule belongs to the carer
+    if schedule["carer_email"] != carer_email:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,  # FIXED: No more attribute error
+            detail="You can only update your own schedules"
+        )
+
+    # Validate status
+    valid_statuses = ["scheduled", "in_progress", "completed", "cancelled"]
+    if new_status not in valid_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status. Must be one of: {valid_statuses}"
+        )
+
+    schedule["status"] = new_status
+
+    return {"message": f"Schedule status updated to {new_status}", "schedule": schedule}
