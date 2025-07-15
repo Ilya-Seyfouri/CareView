@@ -1,6 +1,6 @@
-
+from app.auth import get_current_admin
 from app.database import  hash_password
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.models import Manager
 from app.database import managers
 
@@ -8,15 +8,15 @@ from app.database import managers
 admin_router = APIRouter()
 
 
-@admin_router.delete("/delete/manager/{email}")
-async def delete_manager(email: str):
+@admin_router.delete("/admin/manager/{email}")
+async def delete_manager(email: str, current_admin: dict = Depends(get_current_admin)):
     if email not in managers:
         return {"error": "Manager not found"}
     del managers[email]
     return {"message": f"Manager with email {email} deleted"}
 
-@admin_router.post("/create/manager")
-async def create_manager(manager: Manager):
+@admin_router.post("/admin/manager")
+async def create_manager(manager: Manager, current_admin: dict = Depends(get_current_admin)):
     if manager.email in managers:
         return {"Error": "This manager is already registered"}
 
@@ -29,3 +29,8 @@ async def create_manager(manager: Manager):
     }
 
     return {"message": "Manager created", "data": managers[manager.email]}
+
+
+@admin_router.get("/admin/managers")
+async def get_managers(current_admin: dict = Depends(get_current_admin)):
+    return managers

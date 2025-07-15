@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app.database import familys, patients,carers,schedules
+from app.database import familys, clients, carers, schedules, managers
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.database import hash_password
 from app.auth import get_current_family, create_access_token
@@ -22,7 +22,7 @@ async def update_family(new_data: UpdateFamily, current_family: dict = Depends(g
     new_password = update_data.get("password")
 
     if new_email and new_email != current_email:
-        if new_email in familys:
+        if new_email in familys or new_email in carers or new_email in managers:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already exists"
@@ -44,55 +44,55 @@ async def update_family(new_data: UpdateFamily, current_family: dict = Depends(g
     return response
 
 
-@family_router.get("/family/me/patients")
-async def get_family_patients(current_family: dict = Depends(get_current_family)):
-    patient_ids = current_family["user"]["assigned_patients"]
-    assigned_patient_data = []
+@family_router.get("/family/me/clients")
+async def get_family_clients(current_family: dict = Depends(get_current_family)):
+    client_ids = current_family["user"]["assigned_clients"]
+    assigned_client_data = []
 
-    for pid in patient_ids:
-        if pid in patients:
-            patient_data = patients[pid].copy()
+    for cid in client_ids:
+        if cid in clients:
+            client_data = clients[cid].copy()
 
             # Replace visit_logs with just the IDs
-            if "visit_logs" in patient_data:
-                patient_data["visit_logs"] = list(patient_data["visit_logs"].keys())
+            if "visit_logs" in client_data:
+                client_data["visit_logs"] = list(client_data["visit_logs"].keys())
 
-            assigned_patient_data.append(patient_data)
+            assigned_client_data.append(client_data)
 
-    return {"patients": assigned_patient_data}
+    return {"clients": assigned_client_data}
 
 
 # Specific route before dynamic path route
-@family_router.get("/family/me/patients/visit_logs")
-async def get_family_patients_visit_logs(current_family: dict = Depends(get_current_family)):
-    patient_ids = current_family["user"]["assigned_patients"]
-    assigned_patient_data = []
+@family_router.get("/family/me/clients/visit_logs")
+async def get_family_clients_visit_logs(current_family: dict = Depends(get_current_family)):
+    client_ids = current_family["user"]["assigned_clients"]
+    assigned_client_data = []
 
-    for pid in patient_ids:
-        if pid in patients:
-            patient = patients[pid]
-            patient_visit_logs = {
-                "patient_id": pid,
-                "patient_name": patient.get("name"),
-                "visit_logs": patient.get("visit_logs", {})
+    for cid in client_ids:
+        if cid in clients:
+            client = clients[cid]
+            client_visit_logs = {
+                "client_id": cid,
+                "client_name": client.get("name"),
+                "visit_logs": client.get("visit_logs", {})
             }
-            assigned_patient_data.append(patient_visit_logs)
+            assigned_client_data.append(client_visit_logs)
 
-    return {"patients_visit_logs": assigned_patient_data}
+    return {"clients_visit_logs": assigned_client_data}
 
 
-@family_router.get("/family/me/patients/visit_logs/{visit_log_id}")
+@family_router.get("/family/me/clients/visit_logs/{visit_log_id}")
 async def get_specific_visit_log(visit_log_id: str, current_family: dict = Depends(get_current_family)):
-    patient_ids = current_family["user"]["assigned_patients"]
+    client_ids = current_family["user"]["assigned_clients"]
 
-    for pid in patient_ids:
-        if pid in patients:
-            visit_logs = patients[pid].get("visit_logs", {})
+    for cid in client_ids:
+        if cid in clients:
+            visit_logs = clients[cid].get("visit_logs", {})
 
             if visit_log_id in visit_logs:
                 return {
-                    "patient_id": pid,
-                    "patient_name": patients[pid].get("name"),
+                    "client_id": cid,
+                    "client_name": clients[cid].get("name"),
                     "visit_log": visit_logs[visit_log_id]
                 }
 
@@ -103,21 +103,21 @@ async def get_specific_visit_log(visit_log_id: str, current_family: dict = Depen
 
 
 @family_router.get("/family/me/schedules")
-async def get_patient_schedules(current_family: dict = Depends(get_current_family)):
-    assigned_patient_ids = current_family["user"]["assigned_patients"]
-    patient_schedules = []
+async def get_client_schedules(current_family: dict = Depends(get_current_family)):
+    assigned_client_ids = current_family["user"]["assigned_clients"]
+    client_schedules = []
 
     for schedule in schedules.values():
-        if schedule["patient_id"] in assigned_patient_ids:
+        if schedule["client_id"] in assigned_client_ids:
             enriched_schedule = schedule.copy()
 
-            # Add patient details
-            if schedule["patient_id"] in patients:
-                patient = patients[schedule["patient_id"]]
-                enriched_schedule["patient_details"] = {
-                    "id": patient["id"],
-                    "name": patient["name"],
-                    "room": patient["room"]
+            # Add client details
+            if schedule["client_id"] in clients:
+                client = clients[schedule["client_id"]]
+                enriched_schedule["client_details"] = {
+                    "id": client["id"],
+                    "name": client["name"],
+                    "room": client["room"]
                 }
 
             # Add carer details
@@ -129,34 +129,34 @@ async def get_patient_schedules(current_family: dict = Depends(get_current_famil
                     "email": carer["email"]
                 }
 
-            patient_schedules.append(enriched_schedule)
+            client_schedules.append(enriched_schedule)
 
     # Sort by start time
-    patient_schedules.sort(key=lambda x: x["start_time"])
+    client_schedules.sort(key=lambda x: x["start_time"])
 
-    return {"schedules": patient_schedules}
+    return {"schedules": client_schedules}
 
 
 @family_router.get("/family/me/schedules/upcoming")
 async def get_upcoming_schedules(current_family: dict = Depends(get_current_family)):
-    assigned_patient_ids = current_family["user"]["assigned_patients"]
+    assigned_client_ids = current_family["user"]["assigned_clients"]
     now = datetime.now()
     upcoming_schedules = []
 
     for schedule in schedules.values():
-        if (schedule["patient_id"] in assigned_patient_ids and
+        if (schedule["client_id"] in assigned_client_ids and
                 schedule["start_time"] > now and
                 schedule["status"] == "scheduled"):
 
             enriched_schedule = schedule.copy()
 
-            # Add patient details
-            if schedule["patient_id"] in patients:
-                patient = patients[schedule["patient_id"]]
-                enriched_schedule["patient_details"] = {
-                    "id": patient["id"],
-                    "name": patient["name"],
-                    "room": patient["room"]
+            # Add client details
+            if schedule["client_id"] in clients:
+                client = clients[schedule["client_id"]]
+                enriched_schedule["client_details"] = {
+                    "id": client["id"],
+                    "name": client["name"],
+                    "room": client["room"]
                 }
 
             # Add carer details

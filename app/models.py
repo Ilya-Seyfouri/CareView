@@ -1,11 +1,11 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import date, datetime, time
 
 class Schedule(BaseModel):
     id: str = Field(..., min_length=1)
     carer_email: EmailStr
-    patient_id: str = Field(..., min_length=1)
+    client_id: str = Field(..., min_length=1)
     date: str = Field(..., min_length=1)
     start_time: str = Field(..., min_length=1)
     end_time: str = Field(..., min_length=1)
@@ -17,7 +17,7 @@ class Schedule(BaseModel):
 
 class CreateSchedule(BaseModel):
     carer_email: EmailStr
-    patient_id: str = Field(..., min_length=1, max_length=50)
+    client_id: str = Field(..., min_length=1, max_length=50)
     date: str = Field(..., min_length=1)
     start_time: str = Field(..., min_length=1)
     end_time: str = Field(..., min_length=1)
@@ -26,7 +26,7 @@ class CreateSchedule(BaseModel):
 
 class UpdateSchedule(BaseModel):
     carer_email: Optional[EmailStr] = None
-    patient_id: Optional[str] = Field(None, min_length=1, max_length=50)
+    client_id: Optional[str] = Field(None, min_length=1, max_length=50)
     date: Optional[str] = Field(None, min_length=1)
     start_time: Optional[str] = Field(None, min_length=1)
     end_time: Optional[str] = Field(None, min_length=1)
@@ -47,24 +47,25 @@ class Carer(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     password: str = Field(..., min_length=5, max_length=100)
     phone: str = Field(..., min_length=1)
-    assigned_patients: Optional[List[str]] = []
+    assigned_clients: Optional[List[str]] = []
 
 class UpdateVisitLog(BaseModel):
     id: Optional[str] = Field(None, min_length=1, max_length=50)
     date: Optional[datetime] = None
-    showered: Optional[bool] = None
-    meds_given: Optional[str] = Field(None, max_length=500)
+    personal_care_completed: Optional[bool] = None
+    care_reminders_provided: Optional[str] = Field(None, max_length=500)
     toilet: Optional[bool] = None
     changed_clothes: Optional[bool] = None
     ate_food: Optional[str] = Field(None, max_length=300)
     notes: Optional[str] = Field(None, max_length=1000)
     mood: Optional[List[str]] = None
+    last_updated: Optional[List[Dict[str, Any]]] = []
 
 class VisitLog(BaseModel):
     id: str = Field(..., min_length=1, max_length=50)
     date: datetime
-    showered: bool
-    meds_given: str = Field(..., min_length=1, max_length=500)
+    personal_care_completed: bool
+    care_reminders_provided: str = Field(..., min_length=1, max_length=500)
     toilet: bool
     changed_clothes: bool
     ate_food: str = Field(..., min_length=1, max_length=300)
@@ -72,14 +73,15 @@ class VisitLog(BaseModel):
     mood: Optional[List[str]] = []
     carer_name: str = Field(..., min_length=1, max_length=100)
     carer_number: Optional[str] = None
+    created_at: Optional[datetime] = None
 
-class Patient(BaseModel):
+class Client(BaseModel):
     id: str = Field(..., min_length=1, max_length=50)
     name: str = Field(..., min_length=1, max_length=100)
     age: int = Field(..., ge=0, le=150)
     room: str = Field(..., min_length=1, max_length=20)
     date_of_birth: str = Field(..., min_length=1)
-    medical_history: str = Field(..., min_length=1, max_length=2000)
+    support_needs: str = Field(..., min_length=1, max_length=2000)
     visit_logs: Optional[Dict[str, dict]] = Field(default_factory=dict)
 
 class Family(BaseModel):
@@ -88,7 +90,7 @@ class Family(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     password: str = Field(..., min_length=5, max_length=100)
     phone: str = Field(..., min_length=1)
-    assigned_patients: Optional[List[str]] = []
+    assigned_clients: Optional[List[str]] = []
 
 class Manager(BaseModel):
     email: EmailStr
@@ -96,20 +98,21 @@ class Manager(BaseModel):
     password: str = Field(..., min_length=5, max_length=100)
     department: str = Field(..., min_length=1, max_length=100)
 
+
 class UpdateCarer(BaseModel):
     email: Optional[EmailStr] = None
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     password: Optional[str] = Field(None, min_length=5, max_length=100)
     phone: Optional[str] = Field(None, min_length=1)
-    medical_history: Optional[str] = Field(None, max_length=2000)
+    support_needs: Optional[str] = Field(None, max_length=2000)
 
-class UpdatePatient(BaseModel):
+class UpdateClient(BaseModel):
     id: Optional[str] = Field(None, min_length=1, max_length=50)
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     age: Optional[int] = Field(None, ge=0, le=150)
     room: Optional[str] = Field(None, min_length=1, max_length=20)
     date_of_birth: Optional[str] = Field(None, min_length=1)
-    medical_history: Optional[str] = Field(None, min_length=1, max_length=2000)
+    support_needs: Optional[str] = Field(None, min_length=1, max_length=2000)
 
 class UpdateFamily(BaseModel):
     id: Optional[str] = Field(None, min_length=1, max_length=50)
