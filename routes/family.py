@@ -1,175 +1,430 @@
 from datetime import datetime
 
-from app.database import familys, clients, carers, schedules, managers
-from fastapi import APIRouter, HTTPException, status, Depends
-from app.database import hash_password
-from app.auth import get_current_family, create_access_token
+from fastapi import APIRouter, HTTPException,Depends
+from sqlalchemy.orm import Session
+
+from app.auth import get_current_family,logger
+from app.database2 import get_db, hash_password
+from app.database_models import User, Client as DBClient, Schedule as DBSchedule
 from app.models import UpdateFamily
+
+
 
 family_router = APIRouter()
 
-# Get Family member by email
+
+#Family Routes
+
+
+
 @family_router.get("/family/me")
-async def get_family_details(current_family: dict = Depends(get_current_family)):
-    return current_family
+async def get_family_details(current_family: dict = Depends(get_current_family),
+                             db: Session = Depends(get_db)):
+    logger.info(f"Getting family details - {current_family['user']['email']}")
+
+    db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+    if not db_family:
+        logger.warning(f"Family member not found: {current_family['user']['email']}")
+        raise HTTPException(status_code=404, detail=f"Family member at {current_family['user']['email']} not found")
+
+    return {
+        "email": db_family.email,
+        "id": db_family.family_id,
+        "name": db_family.name,
+        "phone": db_family.phone,
+        "assigned_clients": [client.id for client in db_family.assigned_clients],
+    }
+
+
+
 
 
 @family_router.put("/family/me")
-async def update_family(new_data: UpdateFamily, current_family: dict = Depends(get_current_family)):
-    current_email = current_family["user"]["email"]
-    update_data = new_data.dict(exclude_unset=True)
-    new_email = update_data.get("email")
-    new_password = update_data.get("password")
+async def update_family(new_data: UpdateFamily, current_family: dict = Depends(get_current_family),
+                        db: Session = Depends(get_db)):
+    logger.info(f"Updating family profile - {current_family['user']['email']}")
 
-    if new_email and new_email != current_email:
-        if new_email in familys or new_email in carers or new_email in managers:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already exists"
-            )
-        familys[new_email] = current_family["user"]  # Reassign data to new email key
-        del familys[current_email]  # Delete old email key
+    try:
+        db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+        if not db_family:
+            raise HTTPException(status_code=404, detail=f"Family member at {current_family['user']['email']} not found")
 
-    if new_password:
-        current_family["user"]["password"] = hash_password(new_password)
-        update_data.pop("password")  # Remove password from update dict
+        update_data = new_data.dict(exclude_unset=True)
 
-    current_family["user"].update(update_data)
+        # Regular update
+        for field, value in update_data.items():
+            if field == "password":
+                db_family.password_hash = hash_password(value)
+            elif hasattr(db_family, field):
+                setattr(db_family, field, value)
 
-    response = {"success": True, "updated": current_family}
-    if new_email and new_email != current_email:
-        new_token = await create_access_token(data={"sub": new_email})
-        response["new_token"] = new_token
+        db.commit()
+        logger.info(f"Family profile updated successfully: {current_family['user']['email']}")
+        return {"success": True}
 
-    return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating family profile: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update profile")
+
+
+
+
+
+#Family Client Routes
+
+
 
 
 @family_router.get("/family/me/clients")
-async def get_family_clients(current_family: dict = Depends(get_current_family)):
-    client_ids = current_family["user"]["assigned_clients"]
-    assigned_client_data = []
+async def get_family_clients(current_family: dict = Depends(get_current_family),
+                             db: Session = Depends(get_db)):
+    logger.info(f"Getting family clients - {current_family['user']['email']}")
 
-    for cid in client_ids:
-        if cid in clients:
-            client_data = clients[cid].copy()
+    db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+    if not db_family:
+        logger.warning(f"Family member not found: {current_family['user']['email']}")
+        raise HTTPException(status_code=404, detail=f"Family member at {current_family['user']['email']} not found")
 
-            # Replace visit_logs with just the IDs
-            if "visit_logs" in client_data:
-                client_data["visit_logs"] = list(client_data["visit_logs"].keys())
+    clients_list = []
+    for client in db_family.assigned_clients:
+        clients_list.append({
+            "id": client.id,
+            "name": client.name,
+            "age": client.age,
+            "room": client.room,
+            "support_needs": client.support_needs
+        })
 
-            assigned_client_data.append(client_data)
-
-    return {"clients": assigned_client_data}
-
-
-# Specific route before dynamic path route
-@family_router.get("/family/me/clients/visit_logs")
-async def get_family_clients_visit_logs(current_family: dict = Depends(get_current_family)):
-    client_ids = current_family["user"]["assigned_clients"]
-    assigned_client_data = []
-
-    for cid in client_ids:
-        if cid in clients:
-            client = clients[cid]
-            client_visit_logs = {
-                "client_id": cid,
-                "client_name": client.get("name"),
-                "visit_logs": client.get("visit_logs", {})
-            }
-            assigned_client_data.append(client_visit_logs)
-
-    return {"clients_visit_logs": assigned_client_data}
+    return {"clients": clients_list}
 
 
-@family_router.get("/family/me/clients/visit_logs/{visit_log_id}")
-async def get_specific_visit_log(visit_log_id: str, current_family: dict = Depends(get_current_family)):
-    client_ids = current_family["user"]["assigned_clients"]
 
-    for cid in client_ids:
-        if cid in clients:
-            visit_logs = clients[cid].get("visit_logs", {})
 
-            if visit_log_id in visit_logs:
+
+
+@family_router.get("/family/me/clients/{client_id}")
+async def get_family_client_by_id(client_id: str, current_family: dict = Depends(get_current_family),
+                                  db: Session = Depends(get_db)):
+    logger.info(f"Getting client {client_id} - {current_family['user']['email']}")
+
+    db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+    if not db_family:
+        logger.warning(f"Family member not found: {current_family['user']['email']}")
+        raise HTTPException(status_code=404, detail=f"Family member at {current_family['user']['email']} not found")
+
+    db_client = db.query(DBClient).filter(DBClient.id == client_id).first()
+    if not db_client:
+        logger.warning(f"Client not found: {client_id}")
+        raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
+
+    # Check if client is assigned to this family member
+    if db_client not in db_family.assigned_clients:
+        logger.warning(f"Unauthorized access attempt: {current_family['user']['email']} -> {client_id}")
+        raise HTTPException(status_code=403,
+                            detail=f"Client {client_id} not assigned to family member {current_family['user']['email']}")
+
+    return {
+        "id": db_client.id,
+        "name": db_client.name,
+        "age": db_client.age,
+        "room": db_client.room,
+        "date_of_birth": db_client.date_of_birth,
+        "support_needs": db_client.support_needs
+    }
+
+
+
+
+
+#Family Visit Log Routes
+
+
+
+
+@family_router.get("/family/me/clients/visit-logs")
+async def get_all_family_visit_logs(current_family: dict = Depends(get_current_family),
+                                    db: Session = Depends(get_db)):
+    logger.info(f"Getting all visit logs for family - {current_family['user']['email']}")
+
+    db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+    if not db_family:
+        logger.warning(f"Family member not found: {current_family['user']['email']}")
+        raise HTTPException(status_code=404, detail=f"Family member not found: {current_family['user']['email']}")
+
+    clients_visit_logs = []
+    for client in db_family.assigned_clients:
+        visit_log_ids = [visit_log.id for visit_log in client.visit_logs]
+        clients_visit_logs.append({
+            "client_id": client.id,
+            "client_name": client.name,
+            "visit_logs": visit_log_ids
+        })
+
+    return {"clients_visit_logs": clients_visit_logs}
+
+
+
+
+
+@family_router.get("/family/me/visit-logs/{visit_log_id}")
+async def get_specific_visit_log(visit_log_id: str, current_family: dict = Depends(get_current_family),
+                                 db: Session = Depends(get_db)):
+    logger.info(f"Getting visit log {visit_log_id} - {current_family['user']['email']}")
+
+    db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+    if not db_family:
+        logger.warning(f"Family member not found: {current_family['user']['email']}")
+        raise HTTPException(status_code=404, detail=f"Family member not found: {current_family['user']['email']}")
+
+    # Find the visit log across all assigned clients
+    for client in db_family.assigned_clients:
+        for visit_log in client.visit_logs:
+            if visit_log.id == visit_log_id:
                 return {
-                    "client_id": cid,
-                    "client_name": clients[cid].get("name"),
-                    "visit_log": visit_logs[visit_log_id]
+                    "id": visit_log.id,
+                    "client_id": client.id,
+                    "client_name": client.name,
+                    "carer_name": visit_log.carer_name,
+                    "carer_number": visit_log.carer_number,
+                    "date": visit_log.date,
+                    "personal_care_completed": visit_log.personal_care_completed,
+                    "care_reminders_provided": visit_log.care_reminders_provided,
+                    "toilet": visit_log.toilet,
+                    "changed_clothes": visit_log.changed_clothes,
+                    "ate_food": visit_log.ate_food,
+                    "notes": visit_log.notes,
+                    "mood": visit_log.mood
                 }
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Visit log not found or not accessible to this family member"
-    )
+    logger.warning(f"Visit log not found: {visit_log_id}")
+    raise HTTPException(status_code=404, detail=f"Visit log {visit_log_id} not found")
+
+
+
+
+#Family Schedule Routes
+
+
 
 
 @family_router.get("/family/me/schedules")
-async def get_client_schedules(current_family: dict = Depends(get_current_family)):
-    assigned_client_ids = current_family["user"]["assigned_clients"]
-    client_schedules = []
+async def get_client_schedules(current_family: dict = Depends(get_current_family),
+                               db: Session = Depends(get_db)):
+    logger.info(f"Getting schedules for family - {current_family['user']['email']}")
 
-    for schedule in schedules.values():
-        if schedule["client_id"] in assigned_client_ids:
-            enriched_schedule = schedule.copy()
+    db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+    if not db_family:
+        logger.warning(f"Family member not found: {current_family['user']['email']}")
+        raise HTTPException(status_code=404, detail=f"Family member not found: {current_family['user']['email']}")
 
-            # Add client details
-            if schedule["client_id"] in clients:
-                client = clients[schedule["client_id"]]
-                enriched_schedule["client_details"] = {
-                    "id": client["id"],
-                    "name": client["name"],
-                    "room": client["room"]
-                }
+    # Get assigned client IDs
+    assigned_client_ids = [client.id for client in db_family.assigned_clients]
 
-            # Add carer details
-            if schedule["carer_email"] in carers:
-                carer = carers[schedule["carer_email"]]
-                enriched_schedule["carer_details"] = {
-                    "name": carer["name"],
-                    "phone": carer["phone"],
-                    "email": carer["email"]
-                }
+    # Query schedules for assigned clients
+    db_schedules = db.query(DBSchedule).filter(DBSchedule.client_id.in_(assigned_client_ids)).all()
 
-            client_schedules.append(enriched_schedule)
+    schedules_list = []
+    for schedule in db_schedules:
+        # Get carer info from User table
+        carer = db.query(User).filter(User.email == schedule.carer_email, User.role == "carer").first()
 
-    # Sort by start time
-    client_schedules.sort(key=lambda x: x["start_time"])
+        schedules_list.append({
+            "id": schedule.id,
+            "client_id": schedule.client_id,
+            "client_name": schedule.client.name if schedule.client else "Unknown",
+            "client_room": schedule.client.room if schedule.client else "Unknown",
+            "carer_name": carer.name if carer else "Unknown",
+            "carer_phone": carer.phone if carer else "Unknown",
+            "date": schedule.date,
+            "start_time": schedule.start_time,
+            "end_time": schedule.end_time,
+            "shift_type": schedule.shift_type,
+            "status": schedule.status,
+            "notes": schedule.notes
+        })
 
-    return {"schedules": client_schedules}
+    # Sort by date and start time
+    schedules_list.sort(key=lambda x: (x["date"], x["start_time"]))
+
+    return {"schedules": schedules_list}
+
+
+
+
+
+
+
+
+@family_router.get("/family/me/today")
+async def get_todays_care_schedule(current_family: dict = Depends(get_current_family),
+                                   db: Session = Depends(get_db)):
+    logger.info(f"Getting today's care schedule for family - {current_family['user']['email']}")
+
+    db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+    if not db_family:
+        raise HTTPException(status_code=404, detail=f"Family member not found: {current_family['user']['email']}")
+
+    # Get assigned client IDs
+    assigned_client_ids = [client.id for client in db_family.assigned_clients]
+
+    # Get today's schedules
+    today = datetime.now().date().strftime("%Y-%m-%d")
+
+    today_schedules = db.query(DBSchedule).filter(
+        DBSchedule.client_id.in_(assigned_client_ids),
+        DBSchedule.date == today
+    ).order_by(DBSchedule.start_time).all()
+
+    # Build schedule with status and details
+    care_schedule = []
+    for schedule in today_schedules:
+        # Get carer info from User table
+        carer = db.query(User).filter(User.email == schedule.carer_email, User.role == "carer").first()
+
+        # Simple status messages
+        if schedule.status == "completed":
+            status_message = "✅ Completed"
+        elif schedule.status == "in_progress":
+            status_message = "🟢 Care happening now"
+        elif schedule.status == "scheduled":
+            status_message = "⏰ Scheduled"
+        elif schedule.status == "cancelled":
+            status_message = "❌ Cancelled"
+        else:
+            status_message = schedule.status
+
+        care_schedule.append({
+            "client_name": schedule.client.name if schedule.client else "Unknown",
+            "client_room": schedule.client.room if schedule.client else "Unknown",
+
+            "carer_name": carer.name if carer else "Unknown",
+            "carer_phone": carer.phone if carer else "Unknown",
+
+            "time": f"{schedule.start_time} - {schedule.end_time}",
+            "shift_type": schedule.shift_type,
+            "notes": schedule.notes,
+
+            "status": schedule.status,
+            "status_message": status_message,
+            "completed_at": schedule.completed_at
+        })
+
+    # Simple summary
+    total = len(today_schedules)
+    completed = len([s for s in today_schedules if s.status == "completed"])
+    happening_now = len([s for s in today_schedules if s.status == "in_progress"])
+    upcoming = len([s for s in today_schedules if s.status == "scheduled"])
+
+    return {
+        "date": today,
+        "care_schedule": care_schedule,
+        "summary": {
+            "total_today": total,
+            "completed": completed,
+            "happening_now": happening_now,
+            "upcoming": upcoming
+        }
+    }
+
+
+
+
+
 
 
 @family_router.get("/family/me/schedules/upcoming")
-async def get_upcoming_schedules(current_family: dict = Depends(get_current_family)):
-    assigned_client_ids = current_family["user"]["assigned_clients"]
-    now = datetime.now()
+async def get_upcoming_schedules(current_family: dict = Depends(get_current_family),
+                                 db: Session = Depends(get_db)):
+    logger.info(f"Getting upcoming schedules for family - {current_family['user']['email']}")
+
+    db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+    if not db_family:
+        logger.warning(f"Family member not found: {current_family['user']['email']}")
+        raise HTTPException(status_code=404, detail=f"Family member not found: {current_family['user']['email']}")
+
+    # Get assigned client IDs
+    assigned_client_ids = [client.id for client in db_family.assigned_clients]
+
+    # Get current date
+    today = datetime.now().date().strftime("%Y-%m-%d")
+
+    # Query upcoming schedules
+    db_schedules = db.query(DBSchedule).filter(
+        DBSchedule.client_id.in_(assigned_client_ids),
+        DBSchedule.date >= today,
+        DBSchedule.status == "scheduled"
+    ).all()
+
     upcoming_schedules = []
+    for schedule in db_schedules:
+        # Get carer info from User table
+        carer = db.query(User).filter(User.email == schedule.carer_email, User.role == "carer").first()
 
-    for schedule in schedules.values():
-        if (schedule["client_id"] in assigned_client_ids and
-                schedule["start_time"] > now and
-                schedule["status"] == "scheduled"):
+        upcoming_schedules.append({
+            "id": schedule.id,
+            "client_id": schedule.client_id,
+            "client_name": schedule.client.name if schedule.client else "Unknown",
+            "client_room": schedule.client.room if schedule.client else "Unknown",
+            "carer_name": carer.name if carer else "Unknown",
+            "carer_phone": carer.phone if carer else "Unknown",
+            "date": schedule.date,
+            "start_time": schedule.start_time,
+            "end_time": schedule.end_time,
+            "shift_type": schedule.shift_type,
+            "status": schedule.status
+        })
 
-            enriched_schedule = schedule.copy()
-
-            # Add client details
-            if schedule["client_id"] in clients:
-                client = clients[schedule["client_id"]]
-                enriched_schedule["client_details"] = {
-                    "id": client["id"],
-                    "name": client["name"],
-                    "room": client["room"]
-                }
-
-            # Add carer details
-            if schedule["carer_email"] in carers:
-                carer = carers[schedule["carer_email"]]
-                enriched_schedule["carer_details"] = {
-                    "name": carer["name"],
-                    "phone": carer["phone"]
-                }
-
-            upcoming_schedules.append(enriched_schedule)
-
-    # Sort by start time
-    upcoming_schedules.sort(key=lambda x: x["start_time"])
+    # Sort by date and start time
+    upcoming_schedules.sort(key=lambda x: (x["date"], x["start_time"]))
 
     return {"schedules": upcoming_schedules}
+
+
+
+
+
+
+@family_router.get("/family/me/schedules/{schedule_id}")
+async def get_schedule_by_id(schedule_id: str, current_family: dict = Depends(get_current_family),
+                             db: Session = Depends(get_db)):
+    logger.info(f"Getting schedule {schedule_id} - {current_family['user']['email']}")
+
+    db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+    if not db_family:
+        logger.warning(f"Family member not found: {current_family['user']['email']}")
+        raise HTTPException(status_code=404, detail=f"Family member not found: {current_family['user']['email']}")
+
+    # Get assigned client IDs
+    assigned_client_ids = [client.id for client in db_family.assigned_clients]
+
+    # Find the schedule
+    db_schedule = db.query(DBSchedule).filter(
+        DBSchedule.id == schedule_id,
+        DBSchedule.client_id.in_(assigned_client_ids)
+    ).first()
+
+    if not db_schedule:
+        logger.warning(f"Schedule not found: {schedule_id}")
+        raise HTTPException(status_code=404, detail=f"Schedule {schedule_id} not found")
+
+    # Get carer info from User table
+    carer = db.query(User).filter(User.email == db_schedule.carer_email, User.role == "carer").first()
+
+    return {
+        "id": db_schedule.id,
+        "client_id": db_schedule.client_id,
+        "client_name": db_schedule.client.name if db_schedule.client else "Unknown",
+        "client_room": db_schedule.client.room if db_schedule.client else "Unknown",
+        "carer_name": carer.name if carer else "Unknown",
+        "carer_phone": carer.phone if carer else "Unknown",
+        "carer_email": db_schedule.carer_email,
+        "date": db_schedule.date,
+        "start_time": db_schedule.start_time,
+        "end_time": db_schedule.end_time,
+        "shift_type": db_schedule.shift_type,
+        "status": db_schedule.status,
+        "notes": db_schedule.notes
+    }
