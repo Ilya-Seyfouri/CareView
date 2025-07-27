@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    container_name: careview-db
+    environment:
+      POSTGRES_DB: careview
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: MySecurePass123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d careview"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # CareView API
+  api:
+    build: .
+    container_name: careview-api
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: careview
+      DB_USER: admin
+      DB_PASSWORD: MySecurePass123
+      SECRET_KEY: your-secret-key-change-in-production
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 480
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  # CareView Frontend
+  frontend:
+    build: ./frontend
+    container_name: careview-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    restart: unless-stopped
+
+  # Adminer (Database Management Tool)
+  adminer:
+    image: adminer:latest
+    container_name: careview-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

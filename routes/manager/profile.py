@@ -4,10 +4,12 @@ from fastapi import APIRouter, HTTPException,Depends
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_manager,logger
-from app.database2 import get_db, hash_password
+from app.database import get_db, hash_password
 from app.database_models import User, Client as DBClient, Schedule as DBSchedule
 from app.models import UpdateManager
-manager_auth_router = APIRouter()
+
+
+router = APIRouter()
 
 
 
@@ -17,15 +19,15 @@ manager_auth_router = APIRouter()
 
 
 
-@manager_auth_router.get("/manager/me")
-async def get_manager(current_manager: dict = Depends(get_current_manager),
+@router.get("/manager/me")
+async def get_manager(current_manager =  Depends(get_current_manager),
                       db: Session = Depends(get_db)):
-    logger.info(f"Getting manager details - {current_manager['user']['email']}")
+    logger.info(f"Getting manager details - {current_manager.email}")
 
-    db_manager = db.query(User).filter(User.email == current_manager["user"]["email"], User.role == "manager").first()
+    db_manager = db.query(User).filter(User.email == current_manager.email, User.role == "manager").first()
     if not db_manager:
-        logger.warning(f"Manager not found: {current_manager['user']['email']}")
-        raise HTTPException(status_code=404, detail=f"Manager not found: {current_manager['user']['email']}")
+        logger.warning(f"Manager not found: {current_manager.email}")
+        raise HTTPException(status_code=404, detail=f"Manager not found: {current_manager.email}")
 
     return {
         "email": db_manager.email,
@@ -37,16 +39,16 @@ async def get_manager(current_manager: dict = Depends(get_current_manager),
 
 
 
-@manager_auth_router.put("/manager/me")
+@router.put("/manager/me")
 async def update_manager(new_data: UpdateManager,
-                         current_manager: dict = Depends(get_current_manager),
+                         current_manager = Depends(get_current_manager),
                          db: Session = Depends(get_db)):
-    logger.info(f"Updating manager profile - {current_manager['user']['email']}")
+    logger.info(f"Updating manager profile - {current_manager.email}")
 
     try:
-        db_manager = db.query(User).filter(User.email == current_manager["user"]["email"], User.role == "manager").first()
+        db_manager = db.query(User).filter(User.email == current_manager.email, User.role == "manager").first()
         if not db_manager:
-            raise HTTPException(status_code=404, detail=f"Manager not found: {current_manager['user']['email']}")
+            raise HTTPException(status_code=404, detail=f"Manager not found: {current_manager.email}")
 
         update_data = new_data.dict(exclude_unset=True)
 
@@ -58,7 +60,7 @@ async def update_manager(new_data: UpdateManager,
                 setattr(db_manager, field, value)
 
         db.commit()
-        logger.info(f"Manager profile updated successfully: {current_manager['user']['email']}")
+        logger.info(f"Manager profile updated successfully: {current_manager.email}")
         return {"success": True}
 
     except HTTPException:
@@ -71,10 +73,10 @@ async def update_manager(new_data: UpdateManager,
 
 
 
-@manager_auth_router.get("/manager/dashboard")
-async def get_manager_dashboard(current_manager: dict = Depends(get_current_manager),
+@router.get("/manager/dashboard")
+async def get_manager_dashboard(current_manager = Depends(get_current_manager),
                                 db: Session = Depends(get_db)):
-    logger.info(f"Getting manager dashboard - {current_manager['user']['email']}")
+    logger.info(f"Getting manager dashboard - {current_manager.email}")
 
     # Get this week's date range
     today = datetime.now().date()
@@ -115,3 +117,7 @@ async def get_manager_dashboard(current_manager: dict = Depends(get_current_mana
             "total_visits": total_visits,
         }
     }
+
+
+
+

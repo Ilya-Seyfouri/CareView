@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from app.database2 import verify_password, get_db
+from app.database import verify_password, get_db
 from app.database_models import User
 from app.models import Token, LoginRequest
 
@@ -28,33 +28,17 @@ def get_user(email: str, db: Session):
     user = db.query(User).filter(User.email == email).first()
     if not user:
         return None
-
-    return {
-        "user": {
-            "email": user.email,
-            "name": user.name,
-            "phone": user.phone,
-            "role": user.role
-        },
-        "user-type": user.role,
-        "db_user": user
-    }
+    # Just return the user object!
+    return user
 
 #Authenticate against single users table
+
 async def authenticate_user(email: str, password: str, db: Session):
-
-    user_data = get_user(email, db)
-    if not user_data:
+    user = get_user(email, db)
+    if not user or not verify_password(password, str(user.password_hash)):
         return False
+    return user
 
-    db_user = user_data["db_user"]
-    if not verify_password(password, str(db_user.password_hash)):
-        return False
-
-    return {
-        "user": user_data["user"],
-        "user-type": user_data["user-type"]
-    }
 
 
 
@@ -67,7 +51,6 @@ async def create_access_token(data: dict):
 
 
 
-# Get current user - works for all roles
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security),
                            db: Session = Depends(get_db)):
     try:
@@ -85,39 +68,29 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 
 
-
-
-# Check if user is carer or manager
-async def get_current_carer(current_user: dict = Depends(get_current_user)):
-    if current_user["user-type"] not in ["carer", "manager"]:
+async def get_current_carer(current_user = Depends(get_current_user)):
+    if current_user.role not in ["carer", "manager"]:
         raise HTTPException(status_code=403, detail="Carer access required")
     return current_user
 
 
 
 
-
-# Check if user is family or manager
-async def get_current_family(current_user: dict = Depends(get_current_user)):
-
-    if current_user["user-type"] not in ["family", "manager"]:
+async def get_current_family(current_user = Depends(get_current_user)):
+    if current_user.role not in ["family", "manager"]:
         raise HTTPException(status_code=403, detail="Family access required")
     return current_user
 
 
-
-#Check if user is manager
-async def get_current_manager(current_user: dict = Depends(get_current_user)):
-    if current_user["user-type"] != "manager":
+async def get_current_manager(current_user = Depends(get_current_user)):
+    if current_user.role != "manager":
         raise HTTPException(status_code=403, detail="Manager access required")
     return current_user
 
 
 
-
-#Check if user is admin
-async def get_current_admin(current_user: dict = Depends(get_current_user)):
-    if current_user["user-type"] != "admin":
+async def get_current_admin(current_user = Depends(get_current_user)):
+    if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
@@ -142,7 +115,26 @@ async def login_user(login: LoginRequest, db: Session = Depends(get_db)):
         )
 
     access_token = await create_access_token(
-        data={"sub": user["user"]["email"]}
+        data={"sub": user.email}
     )
-    logger.info(f"Successful login for {user['user']['email']}")
+    logger.info(f"Successful login for {user.email}")
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+async def get_me(current_user = Depends(get_current_user)):
+    return {"user": {
+        "email": current_user.email,
+        "name": current_user.name,
+        "phone": current_user.phone,
+        "role": current_user.role
+    }, "role": current_user.role}
+
+
+@auth_router.get("/me")
+async def get_me(current_user = Depends(get_current_user)):
+    return {"user": {
+        "email": current_user.email,
+        "name": current_user.name,
+        "phone": current_user.phone,
+        "role": current_user.role
+    }, "role": current_user.role}

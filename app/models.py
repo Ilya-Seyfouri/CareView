@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, validator
 from typing import List, Optional, Dict
 from datetime import datetime
 
@@ -6,7 +6,6 @@ from datetime import datetime
 #Main Models
 
 class Client(BaseModel):
-    id: str = Field(..., min_length=1, max_length=50)
     name: str = Field(..., min_length=2, max_length=100)
     age: int = Field(..., ge=18, le=120)
     room: str = Field(..., min_length=1, max_length=20)
@@ -45,7 +44,6 @@ class Manager(BaseModel):
 
 
 class VisitLog(BaseModel):
-    id: str = Field(..., min_length=1, max_length=50)
     date: datetime
     personal_care_completed: bool
     care_reminders_provided: str = Field(..., min_length=1, max_length=500)
@@ -72,7 +70,6 @@ class CreateSchedule(BaseModel):
 
 
 class Schedule(BaseModel):
-    id: str = Field(..., min_length=1)
     carer_email: EmailStr
     client_id: str = Field(..., min_length=1)
     date: str = Field(..., min_length=1)
@@ -158,5 +155,8 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=1)
 
+    @validator('email', pre=True)
+    def clean_email(cls,v):
+        return v.strip().lower() if v else v
 
 

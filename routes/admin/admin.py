@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException,Depends
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_admin
-from app.database2 import get_db, hash_password
+from app.database import get_db, hash_password
 from app.database_models import User, Client as DBClient, Schedule as DBSchedule, VisitLog as DBVisitLog
 from app.models import Manager, UpdateManager
 
@@ -37,26 +37,10 @@ async def get_managers(current_admin: dict = Depends(get_current_admin),
 
 
 
-@admin_router.get("/admin/managers/{email}")
-async def get_manager_by_email(email: str, current_admin: dict = Depends(get_current_admin),
-                               db: Session = Depends(get_db)):
-    logger.info(f"Getting manager {email} - requested by {current_admin['user']['email']}")
-    db_manager = db.query(User).filter(User.email == email, User.role == 'manager').first()
-    if not db_manager:
-        logger.warning(f"Manager not found: {email}")
-        raise HTTPException(status_code=404, detail="Manager not found")
-
-    return {
-        "email": db_manager.email,
-        "name": db_manager.name,
-        "department": db_manager.department,
-    }
 
 
 
-
-
-@admin_router.post("/admin/managers")
+@admin_router.post("/admin/create/manager")
 async def create_manager(manager: Manager, current_admin: dict = Depends(get_current_admin),
                          db: Session = Depends(get_db)):
     logger.info(f"Creating manager {manager.email} - requested by {current_admin['user']['email']}")
@@ -87,6 +71,26 @@ async def create_manager(manager: Manager, current_admin: dict = Depends(get_cur
         db.rollback()
         logger.error(f"Error creating manager: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to create manager")
+
+
+
+
+@admin_router.get("/admin/managers/{email}")
+async def get_manager_by_email(email: str, current_admin: dict = Depends(get_current_admin),
+                               db: Session = Depends(get_db)):
+    logger.info(f"Getting manager {email} - requested by {current_admin['user']['email']}")
+    db_manager = db.query(User).filter(User.email == email, User.role == 'manager').first()
+    if not db_manager:
+        logger.warning(f"Manager not found: {email}")
+        raise HTTPException(status_code=404, detail="Manager not found")
+
+    return {
+        "email": db_manager.email,
+        "name": db_manager.name,
+        "department": db_manager.department,
+    }
+
+
 
 
 

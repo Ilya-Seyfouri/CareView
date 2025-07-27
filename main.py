@@ -1,28 +1,26 @@
 import logging
+from sqlalchemy import text
 from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.responses import JSONResponse
-
-from routes.admin import admin_router
-from routes.manager_auth import manager_auth_router
-from routes.manager_operations import manager_operations_router
-from routes.manager_entities import manager_entities_router
-from routes.family import family_router
-from routes.carers import carer_router
+from app.database import get_db
+from app.database_models import User, Client as DBClient
+from routes import main_router  # Updated import
 from app.auth import auth_router
 
 
 
-# Configure logging
 
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-logger = logging.getLogger(__name__)
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
+logger = logging.getLogger(__name__)
 
 
 # Create FastAPI app
@@ -32,41 +30,68 @@ app = FastAPI(
 )
 
 
-
-# routers
-app.include_router(auth_router, tags=["Authentication"])
-app.include_router(carer_router, tags=["Carers"])
-app.include_router(family_router, tags=["Families"])
-app.include_router(manager_auth_router, tags=["Manager Auth"])
-app.include_router(manager_operations_router, tags=["Manager Operations"])
-app.include_router(manager_entities_router, tags=["Manager Entities"])
-app.include_router(admin_router, tags=["Admin"])
+# Include routers
+app.include_router(main_router)  # Updated to use the new organized router
+app.include_router(auth_router)
 
 
-
-
-
-# Health check endpoints
-@app.get("/", tags=["Health"])
-async def root():
-    return {
-        "status": "healthy",
-        "message": "CareView API is running",
-    }
-
-
+# Checking database connectivity
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {
-        "status": "healthy",
-        "service": "CareView API",
-        "version": "1.0.0",
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        db = next(get_db())
+        db.execute(text("SELECT 1")).fetchone()
+        db.close()
+
+        return {
+            "status": "healthy",
+            "service": "CareView API",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "status": "unhealthy",
+                "service": "CareView API",
+                "error": f"Database connection failed {e}",
+                "timestamp": datetime.now().isoformat()
+            },
+            status_code=503
+        )
 
 
-#Error handlers
+# Monitoring system status
+@app.get("/status", tags=["Health"])
+async def system_status():
+    try:
+        db = next(get_db())
 
+        return {
+            "service": "CareView API",
+            "version": "1.0.0",
+            "timestamp": datetime.now().isoformat(),
+            "database": "connected",
+            "users": db.query(User).count(),
+            "clients": db.query(DBClient).count()
+        }
+
+    except Exception as e:
+        return {
+            "service": "CareView API",
+            "version": "1.0.0",
+            "timestamp": datetime.now().isoformat(),
+            "database": "disconnected",
+            "error": str(e)
+        }
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+# Error handlers
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     logger.warning(f"Validation error at {request.url.path}")
@@ -114,19 +139,12 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-
-
 # Startup/shutdown events
 @app.on_event("startup")
 async def startup_event():
     logger.info("CareView API starting up...")
 
 
-
-
-
-
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("CareView API shutting down...")
-
