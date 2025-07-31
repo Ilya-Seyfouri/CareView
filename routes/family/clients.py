@@ -55,7 +55,7 @@ async def get_family_client_by_id(client_id: str, current_family = Depends(get_c
 
     # Check if client is assigned to this family member
     if db_client not in db_family.assigned_clients:
-        logger.warning(f"Unauthorized access attempt: {['email']} -> {client_id}")
+        logger.warning(f"Unauthorized access attempt: {current_family.email}-> {client_id}")
         raise HTTPException(status_code=403,
                             detail=f"Client {client_id} not assigned to family member {current_family.email}")
 

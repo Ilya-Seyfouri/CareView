@@ -1,29 +1,25 @@
 @echo off
-REM CareView Database Backup Script for Windows
-
 echo.
-echo ========================================
 echo    CareView Database Backup System
-echo ========================================
 echo.
+
 
 REM Load environment variables from .env if it exists
-if exist .env (
+if exist "..\.env" (
     echo Loading database settings from .env file...
-    for /f "usebackq tokens=1,2 delims==" %%a in (".env") do (
-        if not "%%a"=="" if not "%%b"=="" set %%a=%%b
+    for /f "usebackq tokens=1,* delims==" %%a in ("..\.env") do (
+        if not "%%a"=="" if not "%%b"=="" set "%%a=%%b"
     )
 ) else (
     echo Warning: .env file not found, using default values
 )
-
 REM Database configuration with defaults
 if not defined DB_HOST set DB_HOST=localhost
 if not defined DB_PORT set DB_PORT=5432
 
 if not defined DB_NAME set DB_NAME=careview
 if not defined DB_USER set DB_USER=admin
-if not defined DB_PASSWORD set DB_PASSWORD=MySecurePass123
+if not defined DB_PASSWORD set DB_PASSWORD=loklok1354
 
 REM Create backup directory
 if not exist "backups" (

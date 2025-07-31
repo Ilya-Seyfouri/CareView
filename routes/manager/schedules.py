@@ -122,7 +122,7 @@ async def create_schedule(schedule_data: CreateSchedule,
         db.add(new_schedule)
         db.commit()
 
-        logger.info(f"Schedule created successfully: {schedule_id}")
+        logger.info(db, current_manager.email, "created", "schedule", schedule_id)
         log_action(db, current_manager.email, "created", "schedule", schedule_id)
 
         return {"message": "Schedule created", "schedule_id": schedule_id}

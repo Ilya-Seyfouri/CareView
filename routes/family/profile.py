@@ -21,7 +21,7 @@ async def get_family_details(current_family = Depends(get_current_family),
                              db: Session = Depends(get_db)):
     logger.info(f"Getting family details - {current_family.email}")
 
-    db_family = db.query(User).filter(User.email == current_family["user"]["email"], User.role == "family").first()
+    db_family = db.query(User).filter(User.email == current_family.email, User.role == "family").first()
     if not db_family:
         logger.warning(f"Family member not found: {current_family.email}")
         raise HTTPException(status_code=404, detail=f"Family member at {current_family.email} not found")

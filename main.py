@@ -1,7 +1,7 @@
 import logging
-from sqlalchemy import text
+from sqlalchemy import text # we can use sql queries as strings
 from datetime import datetime
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException #Building the restAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.responses import JSONResponse
 from app.database import get_db
@@ -31,7 +31,7 @@ app = FastAPI(
 
 
 # Include routers
-app.include_router(main_router)  # Updated to use the new organized router
+app.include_router(main_router)
 app.include_router(auth_router)
 
 
@@ -129,15 +129,11 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unexpected error at {request.url.path}: {str(exc)}")
-
+    logger.error(f"Error: {str(exc)}")
     return JSONResponse(
         status_code=500,
-        content={
-            "error": "Something went wrong. Please try again."
-        }
+        content={"detail": "Internal server error"}
     )
-
 
 # Startup/shutdown events
 @app.on_event("startup")

@@ -131,10 +131,6 @@ async def get_todays_care_schedule(current_family = Depends(get_current_family),
 
 
 
-
-
-
-
 @router.get("/family/me/schedules/upcoming")
 async def get_upcoming_schedules(current_family = Depends(get_current_family),
                                  db: Session = Depends(get_db)):

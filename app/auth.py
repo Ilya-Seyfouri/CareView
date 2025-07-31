@@ -14,10 +14,11 @@ from app.models import Token, LoginRequest
 
 
 
+
 security = HTTPBearer()
 logger = logging.getLogger(__name__)
 
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-not-for-production-use")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = 480
 
@@ -28,10 +29,8 @@ def get_user(email: str, db: Session):
     user = db.query(User).filter(User.email == email).first()
     if not user:
         return None
-    # Just return the user object!
     return user
 
-#Authenticate against single users table
 
 async def authenticate_user(email: str, password: str, db: Session):
     user = get_user(email, db)
@@ -120,14 +119,6 @@ async def login_user(login: LoginRequest, db: Session = Depends(get_db)):
     logger.info(f"Successful login for {user.email}")
     return {"access_token": access_token, "token_type": "bearer"}
 
-
-async def get_me(current_user = Depends(get_current_user)):
-    return {"user": {
-        "email": current_user.email,
-        "name": current_user.name,
-        "phone": current_user.phone,
-        "role": current_user.role
-    }, "role": current_user.role}
 
 
 @auth_router.get("/me")

@@ -4,7 +4,6 @@ import bcrypt
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-import logging
 
 from app.database_models import AuditLog
 
@@ -13,15 +12,12 @@ from app.database_models import AuditLog
 # Load environment variables
 load_dotenv()
 
-
-
 # Database configuration
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "careview")
 DB_USER = os.getenv("DB_USER", "admin")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "MySecurePass123")
-
+DB_PASSWORD = os.getenv("DB_PASSWORD", "dev-password-not-for-production")
 
 
 # Create database URL
@@ -74,16 +70,8 @@ def log_action(db: Session, user_email: str, action: str, entity_type: str, enti
         )
         db.add(audit_log)
         db.commit()
-        logger.info(f"AUDIT: {user_email} {action} {entity_type} {entity_id}")
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to log audit action: {str(e)}")
 
 
 
-#Recent activity of audit logs for manager dashboard
-def get_recent_activity(db: Session, limit: int = 20):
-    try:
-        return db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit).all()
-    except Exception:
-        return []

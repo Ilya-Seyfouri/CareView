@@ -56,7 +56,7 @@ async def create_visit_log(client_id: str, visitlog: VisitLog,
 
 
 
-        logger.info(f"Visit log created successfully: {visit_log_id}")
+        logger.info(db, current_manager.email, "created", "visit_log", visit_log_id)
         log_action(db, current_manager.email, "created", "visit_log", visit_log_id)
 
         return {"message": "Visit log created", "id": visit_log_id}
@@ -170,8 +170,7 @@ async def edit_visit_log(client_id: str, visit_log_id: str, new_data: UpdateVisi
 
 
 
-        logger.info(f"Visit log updated successfully: {visit_log_id}")
-        log_action(db, current_manager['user']['email'], "updated","visit_log", visit_log_id)
+        logger.info(db, current_manager.email, "updated","visit_log", visit_log_id)
 
         return {"success": True, "id": visit_log_id}
 
@@ -207,8 +206,7 @@ async def delete_visit_log(client_id: str, visit_log_id: str,
 
 
 
-        logger.info(f"Visit log deleted successfully: {visit_log_id}")
-        log_action(db, current_manager['user']['email'], "deleted","visit_log", visit_log_id)
+        logger.info(db, current_manager.email, "deleted","visit_log", visit_log_id)
 
         return {"message": "Visit log deleted"}
 

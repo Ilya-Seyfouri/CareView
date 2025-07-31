@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_carer,logger
 from app.database import get_db, log_action
-from app.database_models import User, Client as DBClient, Schedule as DBSchedule, VisitLog as DBVisitLog
-from app.models import UpdateCarer, VisitLog, UpdateVisitLog
+from app.database_models import User, Client as DBClient, VisitLog as DBVisitLog
+from app.models import VisitLog, UpdateVisitLog
 
 
 router = APIRouter()
@@ -31,7 +31,7 @@ async def get_client_visit_logs(client_id: str, current_carer = Depends(get_curr
     if db_client not in db_carer.assigned_clients:
         logger.warning(f"Unauthorized access attempt: {current_carer.email} -> {client_id}")
         raise HTTPException(status_code=403,
-                            detail=f"Client {client_id} is not assigned to {current_carer['user']['name']}")
+                            detail=f"Client {client_id} is not assigned to {current_carer.email}")
 
     visit_logs = []
     for log in db_client.visit_logs:
@@ -71,7 +71,7 @@ async def get_specific_visit_log(client_id: str, visit_log_id: str,
     if db_client not in db_carer.assigned_clients:
         logger.warning(f"Unauthorized access attempt: {current_carer.email} -> {client_id}")
         raise HTTPException(status_code=403,
-                            detail=f"Client {client_id} is not assigned to {current_carer['user']['name']}")
+                            detail=f"Client {client_id} is not assigned to {current_carer.email}")
 
     db_visit_log = db.query(DBVisitLog).filter(
         DBVisitLog.client_id == client_id,
@@ -123,7 +123,7 @@ async def create_visit_log(client_id: str, visitlog: VisitLog,
         if db_client not in db_carer.assigned_clients:
             logger.warning(f"Unauthorized access attempt: {current_carer.email} -> {client_id}")
             raise HTTPException(status_code=403,
-                                detail=f"Client {client_id} is not assigned to {current_carer['user']['name']}")
+                                detail=f"Client {client_id} is not assigned to {current_carer.email}")
 
         # Generate automatic ID
         visit_log_id = f"VL{str(uuid.uuid4())[:8].upper()}"
@@ -135,8 +135,8 @@ async def create_visit_log(client_id: str, visitlog: VisitLog,
         new_visit_log = DBVisitLog(
             id=visit_log_id,
             client_id=client_id,
-            carer_name=current_carer["user"]["name"],
-            carer_number=current_carer["user"]["phone"],
+            carer_name=current_carer.email,
+            carer_number=current_carer.phone,
             date=visitlog.date,
             personal_care_completed=visitlog.personal_care_completed,
             care_reminders_provided=visitlog.care_reminders_provided,
@@ -149,9 +149,9 @@ async def create_visit_log(client_id: str, visitlog: VisitLog,
 
         db.add(new_visit_log)
         db.commit()
+        logger.info(db, current_carer.email, "created", "visit_log", visit_log_id)
         log_action(db, current_carer.email, "created", "visit_log", visit_log_id)
 
-        logger.info(f"Visit log created successfully: {visit_log_id}")
         return {"message": "Visit log created", "id": visit_log_id}
 
     except HTTPException:
@@ -186,7 +186,7 @@ async def update_visit_log(client_id: str, visit_log_id: str, new_data: UpdateVi
         if db_client not in db_carer.assigned_clients:
             logger.warning(f"Unauthorized access attempt: {current_carer.email} -> {client_id}")
             raise HTTPException(status_code=403,
-                                detail=f"Client {client_id} is not assigned to {current_carer['user']['name']}")
+                                detail=f"Client {client_id} is not assigned to {current_carer.email}")
 
         db_visit_log = db.query(DBVisitLog).filter(
             DBVisitLog.id == visit_log_id,
@@ -206,9 +206,8 @@ async def update_visit_log(client_id: str, visit_log_id: str, new_data: UpdateVi
         db_visit_log.last_updated_by = current_carer.email
         db_visit_log.last_updated_at = datetime.now()
         db.commit()
-        log_action(db, current_carer.email, "created", "visit_log", visit_log_id)
+        logger.info(db, current_carer.email, "created", "visit_log", visit_log_id)
 
-        logger.info(f"Visit log updated successfully: {visit_log_id}")
         return {"success": True, "id": visit_log_id}
 
     except HTTPException:

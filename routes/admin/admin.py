@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_admin
 from app.database import get_db, hash_password
-from app.database_models import User, Client as DBClient, Schedule as DBSchedule, VisitLog as DBVisitLog
+from app.database_models import User, Client as DBClient, Schedule as DBSchedule, VisitLog as DBVisitLog, AuditLog
 from app.models import Manager, UpdateManager
 
 
@@ -18,9 +18,9 @@ admin_router = APIRouter()
 #Admin routes
 
 @admin_router.get("/admin/managers")
-async def get_managers(current_admin: dict = Depends(get_current_admin),
+async def get_managers(current_admin = Depends(get_current_admin),
                        db: Session = Depends(get_db)):
-    logger.info(f"Getting all managers - requested by {current_admin['user']['email']}")
+    logger.info(f"Getting all managers - requested by {current_admin.email}")
     managers = db.query(User).filter(User.role == 'manager').all()
 
     managers_list = []
@@ -41,9 +41,9 @@ async def get_managers(current_admin: dict = Depends(get_current_admin),
 
 
 @admin_router.post("/admin/create/manager")
-async def create_manager(manager: Manager, current_admin: dict = Depends(get_current_admin),
+async def create_manager(manager: Manager, current_admin = Depends(get_current_admin),
                          db: Session = Depends(get_db)):
-    logger.info(f"Creating manager {manager.email} - requested by {current_admin['user']['email']}")
+    logger.info(f"Creating manager {manager.email} - requested by {current_admin.email}")
 
     try:
         # Check if manager already exists
@@ -76,9 +76,9 @@ async def create_manager(manager: Manager, current_admin: dict = Depends(get_cur
 
 
 @admin_router.get("/admin/managers/{email}")
-async def get_manager_by_email(email: str, current_admin: dict = Depends(get_current_admin),
+async def get_manager_by_email(email: str, current_admin = Depends(get_current_admin),
                                db: Session = Depends(get_db)):
-    logger.info(f"Getting manager {email} - requested by {current_admin['user']['email']}")
+    logger.info(f"Getting manager {email} - requested by {current_admin.email}")
     db_manager = db.query(User).filter(User.email == email, User.role == 'manager').first()
     if not db_manager:
         logger.warning(f"Manager not found: {email}")
@@ -98,9 +98,9 @@ async def get_manager_by_email(email: str, current_admin: dict = Depends(get_cur
 
 @admin_router.put("/admin/managers/{email}")
 async def update_manager(email: str, new_data: UpdateManager,
-                         current_admin: dict = Depends(get_current_admin),
+                         current_admin = Depends(get_current_admin),
                          db: Session = Depends(get_db)):
-    logger.info(f"Updating manager {email} - requested by {current_admin['user']['email']}")
+    logger.info(f"Updating manager {email} - requested by {current_admin.email}")
 
     try:
         db_manager = db.query(User).filter(User.email == email, User.role == 'manager').first()
@@ -132,9 +132,9 @@ async def update_manager(email: str, new_data: UpdateManager,
 
 
 @admin_router.delete("/admin/managers/{email}")
-async def delete_manager(email: str, current_admin: dict = Depends(get_current_admin),
+async def delete_manager(email: str, current_admin = Depends(get_current_admin),
                          db: Session = Depends(get_db)):
-    logger.info(f"Deleting manager {email} - requested by {current_admin['user']['email']}")
+    logger.info(f"Deleting manager {email} - requested by {current_admin.email}")
 
     try:
         db_manager = db.query(User).filter(User.email == email, User.role == 'manager').first()
@@ -160,9 +160,9 @@ async def delete_manager(email: str, current_admin: dict = Depends(get_current_a
 
 
 @admin_router.get("/admin/dashboard")
-async def get_admin_dashboard(current_admin: dict = Depends(get_current_admin),
+async def get_admin_dashboard(current_admin = Depends(get_current_admin),
                               db: Session = Depends(get_db)):
-    logger.info(f"Getting admin dashboard - requested by {current_admin['user']['email']}")
+    logger.info(f"Getting admin dashboard - requested by {current_admin.email}")
 
     # Get system counts using User table with roles
     total_managers = db.query(User).filter(User.role == 'manager').count()
@@ -184,16 +184,21 @@ async def get_admin_dashboard(current_admin: dict = Depends(get_current_admin),
     }
 
 
-@admin_router.get("/admin/stats")
-async def get_system_stats(current_admin: dict = Depends(get_current_admin),
-                           db: Session = Depends(get_db)):
-    logger.info(f"Getting system stats - requested by {current_admin['user']['email']}")
+@admin_router.get("/admin/activity-logs")
+async def get_activity_logs(
+        current_admin=Depends(get_current_admin),
+        db: Session = Depends(get_db)
+):
+    logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(20).all()
 
     return {
-        "managers": db.query(User).filter(User.role == 'manager').count(),
-        "carers": db.query(User).filter(User.role == 'carer').count(),
-        "families": db.query(User).filter(User.role == 'family').count(),
-        "clients": db.query(DBClient).count(),
-        "schedules": db.query(DBSchedule).count(),
-        "visit_logs": db.query(DBVisitLog).count(),
+        "logs": [
+            {
+                "user": log.user_email,
+                "action": log.action,
+                "target": f"{log.entity_type} {log.entity_id}",
+                "time": log.timestamp.strftime("%H:%M")
+            }
+            for log in logs
+        ]
     }
