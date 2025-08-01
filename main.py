@@ -8,6 +8,7 @@ from app.database import get_db
 from app.database_models import User, Client as DBClient
 from routes import main_router  # Updated import
 from app.auth import auth_router
+from fastapi.middleware.cors import CORSMiddleware
 
 
 
@@ -27,6 +28,19 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="CareView API",
     description="Professional care home management system",
+)
+
+
+# Add this after app = FastAPI(...)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "https://*.vercel.app",  # We'll update this later
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
