@@ -16,12 +16,11 @@ load_dotenv()
 #d
 
 # Database configuration
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "careview")
-DB_USER = os.getenv("DB_USER", "admin")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "dev-password-not-for-production")
-
+DB_HOST = os.getenv("PGHOST", os.getenv("DB_HOST", "localhost"))
+DB_PORT = os.getenv("PGPORT", os.getenv("DB_PORT", "5432"))
+DB_NAME = os.getenv("PGDATABASE", os.getenv("DB_NAME", "careview"))
+DB_USER = os.getenv("PGUSER", os.getenv("DB_USER", "admin"))
+DB_PASSWORD = os.getenv("PGPASSWORD", os.getenv("DB_PASSWORD", "dev-password"))
 
 # Create database URL
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
