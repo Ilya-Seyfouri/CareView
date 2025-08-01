@@ -20,14 +20,6 @@ import random
 
 def reset_database():
 
-    print(" WARNING: This will DELETE your existing database")
-    print("All data will be lost and replaced")
-    response = input("Type 'RESET' to confirm: ")
-
-    if response != "RESET":
-        print("Reset cancelled")
-        return
-
     engine = create_engine(DATABASE_URL)
     SessionLocal = sessionmaker(bind=engine)
 
