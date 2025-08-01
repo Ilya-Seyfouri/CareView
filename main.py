@@ -1,14 +1,15 @@
 import logging
-from sqlalchemy import text # we can use sql queries as strings
+from sqlalchemy import text # we can use sql queries as strings instead of raw sql
 from datetime import datetime
-from fastapi import FastAPI, Request, HTTPException #Building the restAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.responses import JSONResponse
 from app.database import get_db
 from app.database_models import User, Client as DBClient
-from routes import main_router  # Updated import
+from routes import main_router
 from app.auth import auth_router
 from fastapi.middleware.cors import CORSMiddleware
+
 
 
 
@@ -166,3 +167,4 @@ async def setup_demo_data():
         return {"message": " Demo data created!"}
     except Exception as e:
         return {"error": str(e)}
+
