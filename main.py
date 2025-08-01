@@ -144,3 +144,12 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("CareView API shutting down...")
+
+@app.get("/setup-demo-data")
+async def setup_demo_data():
+    try:
+        from scripts.reset import reset_database
+        reset_database()
+        return {"message": "✅ Demo data created! Try logging in with admin@demo.com / password123"}
+    except Exception as e:
+        return {"error": str(e)}

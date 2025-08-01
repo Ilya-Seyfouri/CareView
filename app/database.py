@@ -25,7 +25,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "MySecurePass123")
 
 
 # Create database URL
-DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./careview.db")
 
 
 # Create SQLAlchemy engine
