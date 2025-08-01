@@ -31,12 +31,11 @@ app = FastAPI(
 )
 
 
-# Add this after app = FastAPI(...)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://*.vercel.app",  # We'll update this later
+        "https://careview-12xl3sbvv-ilyas-projects-5951c180.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -164,6 +163,6 @@ async def setup_demo_data():
     try:
         from scripts.reset import reset_database
         reset_database()
-        return {"message": "✅ Demo data created! Try logging in with admin@demo.com / password123"}
+        return {"message": " Demo data created!"}
     except Exception as e:
         return {"error": str(e)}
