@@ -72,10 +72,8 @@ def log_action(db: Session, user_email: str, action: str, entity_type: str, enti
         )
         db.add(audit_log)
         db.commit()
-        logger.info(f"AUDIT: {user_email} {action} {entity_type} {entity_id}")
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to log audit action: {str(e)}")
 
 
 
