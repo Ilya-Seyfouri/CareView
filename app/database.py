@@ -22,11 +22,10 @@ DB_NAME = os.getenv("DB_NAME", "careview")
 DB_USER = os.getenv("DB_USER", "admin")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "MySecurePass123")
 
-DB_PASSWORD = os.getenv("DB_PASSWORD", "dev-password-not-for-production")
 
 
 # Create database URL
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 
 # Create SQLAlchemy engine
