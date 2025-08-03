@@ -9,6 +9,10 @@ FastAPI backend for REST API routes, and role-based authentication to ensure the
 https://careview-backend-production.up.railway.app
 
 
+## 🎥 Demo Video
+[![CareView Demo](https://img.shields.io/badge/▶️_Watch_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=V78btCnI87Y)
+
+
 
 ## Quick Start - Demo Accounts
 
@@ -103,7 +107,7 @@ Tests cover auth, permissions, CRUD operations, and error handling.
 ## How it's built
 
 ### Database design
-- Single user table with roles (simpler than separate tables)
+- Single user table with roles 
 - Many-to-many carer/client assignments  
 - Audit logging for creating and deleting entitys
 - Schedule conflict prevention
@@ -118,16 +122,7 @@ Tests cover auth, permissions, CRUD operations, and error handling.
 ### API structure
 - FastAPI
 - Pydantic validation and models
-- SQLAlchemy ORM to use PostgreSQL database
 - Clean dependency injections for role based access
-
-## Design choices
-
-**Why single user table?** Easier to manage than separate role tables.
-
-**Separate endpoints per role?** Clearer access control than checking permissions everywhere.
-
-**Audit Logs?** Prevents misuse of system
 
 
 
