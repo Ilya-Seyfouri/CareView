@@ -35,7 +35,6 @@ Try it out with these accounts (or just click demo mode on the site):
 - **Backend**: FastAPI + PostgreSQL 
 - **Auth**: JWT tokens, password hashing
 - **Access control**: Role-based (manager/carer/family)
-- **Documentation**: Auto-generated at `/docs`
 
 ## Setup
 
