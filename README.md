@@ -1,12 +1,12 @@
 # CareView - Care Home Management System
 
-A comprehensive care home management system designed for professional healthcare facilities with digital care
-tracking and staff coordination. The system utilizes a PostgreSQL database for secure healthcare data storage,
-FastAPI backend for robust REST API services, and role-based authentication to ensure compliant access control.
+A care home management system designed for professional healthcare facilities with digital care
+tracking and staff coordination. The system uses a PostgreSQL database for data storage,
+FastAPI backend for REST API routes, and role-based authentication to ensure the correct access level for certain users.
 
 
 # Visit the Site
-<link>
+https://careview-backend-production.up.railway.app
 
 
 
@@ -24,14 +24,12 @@ Try it out with these accounts (or just click demo mode on the site):
 - Let families see care updates
 - Manager dashboard with oversight
 - Full audit trail for compliance
-# CareView - Care Home Management System
 
-Built for real care home workflows - not just a prototype.
 
 ## Tech Stack
 
 - **Backend**: FastAPI + PostgreSQL 
-- **Auth**: JWT tokens, bcrypt passwords
+- **Auth**: JWT tokens, password hashing
 - **Access control**: Role-based (manager/carer/family)
 - **Documentation**: Auto-generated at `/docs`
 
@@ -98,45 +96,40 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```bash
 pytest tests/ -v
 ```
-
 Tests cover auth, permissions, CRUD operations, and error handling.
+
+
 
 ## How it's built
 
 ### Database design
 - Single user table with roles (simpler than separate tables)
 - Many-to-many carer/client assignments  
-- Audit logging for everything
+- Audit logging for creating and deleting entitys
 - Schedule conflict prevention
 
 ### Security
 - JWT auth (8 hour expiry)
-- bcrypt password hashing
+- password hashing
 - Input validation
 - Role-based access control
-- Activity logging
+- Audit logs
 
 ### API structure
-- FastAPI with auto docs
-- Pydantic validation
-- SQLAlchemy ORM
-- Clean dependency injection
+- FastAPI
+- Pydantic validation and models
+- SQLAlchemy ORM to use PostgreSQL database
+- Clean dependency injections for role based access
 
 ## Design choices
 
-**Why single user table?** Easier to manage than separate role tables. Role is just a field.
+**Why single user table?** Easier to manage than separate role tables.
 
 **Separate endpoints per role?** Clearer access control than checking permissions everywhere.
 
-**Audit Logs?** Care homes need this for compliance.
+**Audit Logs?** Prevents misuse of system
+
+
 
 ## Development notes
-
-The system handles real care home scenarios:
-- Staff calling in sick (schedule gaps)
-- Family wanting updates
-- Regulatory inspections (audit trail)
-- New resident admissions
-- Staff turnover
-
 Built this for an actual care home, so it's not just academic.
