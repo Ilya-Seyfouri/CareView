@@ -7,11 +7,10 @@ FastAPI backend for REST API routes, and role-based authentication to ensure the
 
 
 # Visit the Site
-https://careview-backend-production.up.railway.app
-
+https://careview.up.railway.app
 
 ## 🎥 Demo Video
-[![CareView Demo](https://img.shields.io/badge/▶️_Watch_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=V78btCnI87Y)
+[![CareView Demo](https://img.shields.io/badge/▶️_Watch_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=gxm6m2cMNlE)
 
 
 
