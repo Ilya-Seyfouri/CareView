@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_manager, logger
 from app.database import get_db, hash_password
-from app.database_models import User, Client as DBClient
+from app.database_models import User, Client as DBClient, Schedule
 from app.models import Carer,UpdateCarer
 
 router = APIRouter()
@@ -155,6 +155,8 @@ async def delete_carer(email: str, current_manager = Depends(get_current_manager
         db_carer = db.query(User).filter(User.email == email, User.role == "carer").first()
         if not db_carer:
             raise HTTPException(status_code=404, detail=f"Carer {email} not found")
+
+        db.query(Schedule).filter(Schedule.carer_email == email).delete()
 
         db.delete(db_carer)
         db.commit()

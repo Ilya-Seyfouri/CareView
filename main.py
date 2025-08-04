@@ -36,7 +36,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://careview-12xl3sbvv-ilyas-projects-5951c180.vercel.app",
         "https://careview.up.railway.app",
 
     ],
