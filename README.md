@@ -48,7 +48,7 @@ cd careview-system
 python -m venv careview-env
 source careview-env/bin/activate  # Windows: careview-env\Scripts\activate
 
-# Install stuff
+# Install the packages we need
 pip install -r requirements.txt
 
 # Database config - create .env file:
@@ -65,7 +65,6 @@ python scripts/reset.py
 # Run it
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
-
 ## Using it
 
 - API docs: `http://localhost:8000/docs`
