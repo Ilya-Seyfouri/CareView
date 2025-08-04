@@ -122,7 +122,3 @@ Tests cover auth, permissions, CRUD operations, and error handling.
 - Pydantic validation and models
 - Clean dependency injections for role based access
 
-
-
-## Development notes
-Built this for an actual care home, so it's not just academic.
