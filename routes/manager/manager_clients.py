@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_manager, logger
 from app.database import get_db
-from app.database_models import Client as DBClient
+from app.database_models import Client as DBClient, Schedule
 from app.models import Client, UpdateClient
 
 
@@ -141,6 +141,8 @@ async def delete_client(client_id: str, current_manager = Depends(get_current_ma
         db_client = db.query(DBClient).filter(DBClient.id == client_id).first()
         if not db_client:
             raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
+
+        db.query(Schedule).filter(Schedule.client_id == client_id).delete()
 
         db.delete(db_client)
         db.commit()
