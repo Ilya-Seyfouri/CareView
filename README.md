@@ -1,6 +1,6 @@
 # CareView - Care Home Management System
 
-A digital system built for professional healthcare facilities to streamline care tracking, staff coordination, and family communication. Built for an actual care home facility - not just a prototype. The system uses a PostgreSQL database for data storage,
+A digital system built for professional healthcare services to streamline care tracking, staff coordination, and provide communication between family members and patients. Built for an actual care home facility - not just a prototype. The system uses a PostgreSQL database for data storage,
 FastAPI backend for REST API routes, and role-based authentication to ensure the correct access level for certain users.
 
 
